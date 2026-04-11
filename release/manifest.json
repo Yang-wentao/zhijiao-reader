@@ -1,5 +1,12 @@
 [
   {
+    "file": "codex-paper-reader-148967d-20260412-012027.zip",
+    "commit": "148967df369930642ae035da56f299e5105241f3",
+    "shortCommit": "148967d",
+    "subject": "feat: improve provider setup and GitHub release prep",
+    "createdAt": "2026-04-11T17:20:27.101Z"
+  },
+  {
     "file": "codex-paper-reader-a0ad4d5-20260411-220505.zip",
     "commit": "a0ad4d52b1ce0b82e5640ec4a8919a72702b68fc",
     "shortCommit": "a0ad4d5",
