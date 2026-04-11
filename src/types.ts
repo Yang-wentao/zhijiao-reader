@@ -40,8 +40,8 @@ export type SelectionOverlay = {
 export type AppConfig = {
   hasApiKey: boolean;
   isReady: boolean;
-  provider: "openai" | "codex" | "deepseek";
-  providerOptions: Array<"openai" | "codex" | "deepseek">;
+  provider: "openai" | "codex" | "deepseek" | "custom";
+  providerOptions: Array<"openai" | "codex" | "deepseek" | "custom">;
   canSwitchProviders: boolean;
   model: string;
   modelOptions: string[];
@@ -51,4 +51,36 @@ export type AppConfig = {
   canSwitchReasoningEffort: boolean;
   questionActionLabel: string;
   maxSelectionChars: number;
+  setupRequired: boolean;
+  connectionLabel: string;
+};
+
+export type ConnectionSettings = {
+  activeProvider: "openai" | "codex" | "deepseek" | "custom";
+  codex: {
+    bin: string;
+    model: string;
+    reasoningEffort: "low" | "medium" | "high";
+  };
+  deepseek: {
+    apiKey: string;
+    model: string;
+    baseUrl: string;
+  };
+  openai: {
+    apiKey: string;
+    model: string;
+    baseUrl: string;
+  };
+  custom: {
+    label: string;
+    apiKey: string;
+    model: string;
+    baseUrl: string;
+  };
+};
+
+export type ConnectionTestResult = {
+  ok: boolean;
+  message: string;
 };

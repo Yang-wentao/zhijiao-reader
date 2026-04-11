@@ -5,6 +5,7 @@ import type { AIProvider, AskInput, ChatMessage, TranslationInput } from "./type
 type ProviderOptions = {
   apiKey: string;
   model: string;
+  baseURL?: string;
 };
 
 export class DeepSeekProvider implements AIProvider {
@@ -14,7 +15,7 @@ export class DeepSeekProvider implements AIProvider {
   constructor(options: ProviderOptions) {
     this.client = new OpenAI({
       apiKey: options.apiKey,
-      baseURL: "https://api.deepseek.com",
+      baseURL: options.baseURL || "https://api.deepseek.com",
     });
     this.model = options.model;
   }

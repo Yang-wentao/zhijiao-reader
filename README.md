@@ -15,13 +15,12 @@ It runs as a local web app in your browser. It is not yet a native macOS or Wind
 ## Setup
 
 1. Copy `.env.example` to `.env`.
-2. Pick a provider with `AI_PROVIDER=openai`, `AI_PROVIDER=codex`, or `AI_PROVIDER=deepseek`.
-3. If using `openai`, set `OPENAI_API_KEY`.
-4. If using `deepseek`, set `DEEPSEEK_API_KEY`.
-5. Optionally change `OPENAI_MODEL` or `DEEPSEEK_MODEL`.
-6. If using `codex`, make sure the local `codex` CLI works in your shell. Override `CODEX_BIN` only if needed.
+2. `npm run launch` can start immediately even if no API is configured yet.
+3. Complete provider setup inside the app with the `Settings` button in the right panel.
+4. `npm run configure` is still available if you prefer terminal setup for the `.env` defaults.
 
 The real `.env` file stays local and is ignored by git. Only `.env.example` should be shared.
+Runtime connection settings are stored locally in `config/providers.local.json`, which is also ignored by git.
 
 ## Run
 
@@ -47,15 +46,19 @@ Useful helper commands:
 ```bash
 npm run configure
 npm run check
+npm run release:zip
 ```
 
 `npm run launch` will:
 
 - create `.env` from `.env.example` if needed
-- prompt for provider/API setup when config is missing
 - check whether local `codex` is available
 - install dependencies if `node_modules` is missing
 - start the app and open the browser automatically
+
+After launch, the app can open a connection settings dialog automatically when setup is still incomplete.
+
+`npm run release:zip` will create a versioned `.zip` in [`release/`](/Users/yangwentao/Documents/软件开发尝试/release) from the current committed git state.
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8787`
@@ -70,6 +73,8 @@ npm run check
 - Copy or retry responses
 - Resize the split panes
 - Switch backend provider between OpenAI, DeepSeek, and local Codex CLI
+- Use a custom OpenAI-compatible API endpoint with base URL, model name, and API key
+- Test provider connectivity from the in-app settings dialog before saving
 
 ## Known limits
 
@@ -78,4 +83,5 @@ npm run check
 - OpenAI mode needs a valid `OPENAI_API_KEY`
 - DeepSeek mode needs a valid `DEEPSEEK_API_KEY`
 - Codex mode depends on a working local `codex` CLI session
+- Custom API mode expects an OpenAI-compatible `/v1` endpoint
 - Local Codex is still not true token-by-token streaming; the app simulates a more readable progressive reveal on the frontend

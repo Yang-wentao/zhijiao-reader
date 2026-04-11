@@ -3,20 +3,13 @@ import { PassageCard } from "./PassageCard";
 
 type AssistantPanelProps = {
   cards: PassageCardType[];
-  provider: "openai" | "codex" | "deepseek";
-  providerOptions: Array<"openai" | "codex" | "deepseek">;
-  canSwitchProviders: boolean;
+  provider: "openai" | "codex" | "deepseek" | "custom";
+  connectionLabel: string;
   model: string;
-  modelOptions: string[];
-  canSwitchModels: boolean;
   reasoningEffort: "low" | "medium" | "high" | null;
-  reasoningEffortOptions: Array<"low" | "medium" | "high">;
-  canSwitchReasoningEffort: boolean;
   isUpdatingModel: boolean;
   questionActionLabel: string;
-  onProviderChange: (provider: "openai" | "codex" | "deepseek") => void;
-  onModelChange: (model: string) => void;
-  onReasoningEffortChange: (reasoningEffort: "low" | "medium" | "high") => void;
+  onOpenSettings: () => void;
   onAsk: (cardId: string, question: string) => void;
   onDismiss: (cardId: string) => void;
   onToggle: (cardId: string) => void;
@@ -27,19 +20,12 @@ type AssistantPanelProps = {
 export function AssistantPanel({
   cards,
   provider,
-  providerOptions,
-  canSwitchProviders,
+  connectionLabel,
   model,
-  modelOptions,
-  canSwitchModels,
   reasoningEffort,
-  reasoningEffortOptions,
-  canSwitchReasoningEffort,
   isUpdatingModel,
   questionActionLabel,
-  onProviderChange,
-  onModelChange,
-  onReasoningEffortChange,
+  onOpenSettings,
   onAsk,
   onDismiss,
   onToggle,
@@ -49,74 +35,22 @@ export function AssistantPanel({
   return (
     <div className="assistant-panel">
       <header className="assistant-header">
-        <div className="assistant-summary-row">
+        <div className="assistant-summary-row assistant-summary-row-compact">
           <div className="assistant-title-group">
-            <p className="panel-kicker">AI Reading Copilot</p>
             <h1>Codex Panel</h1>
           </div>
-          <p className="panel-copy">
-            Default flow: translate the selected passage, then keep asking follow-up questions in the same card.
-          </p>
-        </div>
-        <div className="assistant-controls-row">
-          <div className="model-chip-row">
-            <span className="model-label">Current</span>
-            <strong className="model-value">{model}</strong>
-            <span className="model-provider">{formatProviderLabel(provider)}</span>
-            {reasoningEffort ? <strong className="model-value model-effort">{reasoningEffort}</strong> : null}
+          <div className="assistant-header-actions">
+            <div className="model-chip-row model-chip-row-compact" aria-label="Current connection">
+              <span className="model-provider">{formatProviderLabel(provider)}</span>
+              <strong className="model-value">{model}</strong>
+              {reasoningEffort ? <strong className="model-value model-effort">{reasoningEffort}</strong> : null}
+            </div>
+            <button type="button" className="secondary-button" onClick={onOpenSettings} disabled={isUpdatingModel}>
+              Settings
+            </button>
           </div>
-          {canSwitchProviders ? (
-            <label className="model-switcher model-switcher-inline">
-              <span className="model-switcher-label">Provider</span>
-              <select
-                aria-label="Provider"
-                value={provider}
-                onChange={(event) => onProviderChange(event.target.value as "openai" | "codex" | "deepseek")}
-                disabled={isUpdatingModel}
-              >
-                {providerOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {formatProviderLabel(option)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {canSwitchModels ? (
-            <label className="model-switcher model-switcher-inline">
-              <span className="model-switcher-label">Model</span>
-              <select
-                aria-label="Model"
-                value={model}
-                onChange={(event) => onModelChange(event.target.value)}
-                disabled={isUpdatingModel}
-              >
-                {modelOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {canSwitchReasoningEffort && reasoningEffort ? (
-            <label className="model-switcher model-switcher-inline">
-              <span className="model-switcher-label">Reasoning</span>
-              <select
-                aria-label="Reasoning"
-                value={reasoningEffort}
-                onChange={(event) => onReasoningEffortChange(event.target.value as "low" | "medium" | "high")}
-                disabled={isUpdatingModel}
-              >
-                {reasoningEffortOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
         </div>
+        <p className="connection-inline-label">{connectionLabel}</p>
       </header>
       {cards.length > 20 ? (
         <div className="inline-warning">
@@ -148,12 +82,15 @@ export function AssistantPanel({
   );
 }
 
-function formatProviderLabel(provider: "openai" | "codex" | "deepseek") {
+function formatProviderLabel(provider: "openai" | "codex" | "deepseek" | "custom") {
   if (provider === "deepseek") {
     return "DeepSeek";
   }
   if (provider === "codex") {
     return "Local Codex";
+  }
+  if (provider === "custom") {
+    return "Custom API";
   }
   return "OpenAI";
 }

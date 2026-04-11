@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AssistantPanel } from "./components/AssistantPanel";
+import { ConnectionSettingsModal } from "./components/ConnectionSettingsModal";
 import { PdfPane } from "./components/PdfPane";
 import { SplitLayout } from "./components/SplitLayout";
 import { splitIntoReadableChunks as splitStreamChunks } from "./lib/streaming";
 import {
   fetchAppConfig,
+  fetchConnectionSettings,
+  saveConnectionSettings,
   streamAsk,
   streamTranslation,
-  updateAppModel,
-  updateAppProvider,
-  updateAppReasoningEffort,
+  testConnectionSettings,
 } from "./lib/api";
 import { cardsReducer, createCard, getCardHistory, validateSelection } from "./state/cards";
-import type { AppConfig, PassageCard, PdfTab, SelectionOverlay } from "./types";
+import type { AppConfig, ConnectionSettings, PassageCard, PdfTab, SelectionOverlay } from "./types";
 
 const DEFAULT_CONFIG: AppConfig = {
   hasApiKey: false,
@@ -28,22 +29,31 @@ const DEFAULT_CONFIG: AppConfig = {
   canSwitchReasoningEffort: false,
   questionActionLabel: "Ask Codex",
   maxSelectionChars: 8000,
+  setupRequired: false,
+  connectionLabel: "Not connected",
 };
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [connectionSettings, setConnectionSettings] = useState<ConnectionSettings | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isSavingConnection, setIsSavingConnection] = useState(false);
+  const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
   const [tabs, setTabs] = useState<PdfTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [ratio, setRatio] = useState(0.68);
   const [toast, setToast] = useState<string | null>(null);
-  const [isUpdatingModel, setIsUpdatingModel] = useState(false);
   const tabsRef = useRef<PdfTab[]>([]);
 
   useEffect(() => {
     void fetchAppConfig()
       .then((nextConfig) => {
         setConfig(nextConfig);
+        if (nextConfig.setupRequired) {
+          void openSettingsModal(true);
+        }
       })
       .catch((error: Error) => {
         setConfigError(error.message);
@@ -79,6 +89,19 @@ export default function App() {
     cards.forEach((card) => entries.set(card.id, card));
     return entries;
   }, [cards]);
+
+  async function openSettingsModal(forceOpen = false) {
+    try {
+      const settings = await fetchConnectionSettings();
+      setConnectionSettings(settings);
+      setConnectionNotice(null);
+      if (forceOpen || !isSettingsOpen) {
+        setIsSettingsOpen(true);
+      }
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Failed to load connection settings.");
+    }
+  }
 
   function handleFileSelected(file: File) {
     const nextTab: PdfTab = {
@@ -202,51 +225,35 @@ export default function App() {
     setToast("Nothing to retry yet in this card.");
   }
 
-  async function handleModelChange(model: string) {
-    if (model === config.model || isUpdatingModel) {
+  async function handleConnectionTest() {
+    if (!connectionSettings) {
       return;
     }
-    setIsUpdatingModel(true);
+    setIsTestingConnection(true);
     try {
-      const nextConfig = await updateAppModel(model);
-      setConfig(nextConfig);
-      setToast(`Now using ${nextConfig.model}.`);
+      const result = await testConnectionSettings(connectionSettings);
+      setConnectionNotice(result.message);
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Failed to switch model.");
+      setConnectionNotice(error instanceof Error ? error.message : "Connection test failed.");
     } finally {
-      setIsUpdatingModel(false);
+      setIsTestingConnection(false);
     }
   }
 
-  async function handleProviderChange(provider: "openai" | "codex" | "deepseek") {
-    if (provider === config.provider || isUpdatingModel) {
+  async function handleConnectionSave() {
+    if (!connectionSettings) {
       return;
     }
-    setIsUpdatingModel(true);
+    setIsSavingConnection(true);
     try {
-      const nextConfig = await updateAppProvider(provider);
+      const nextConfig = await saveConnectionSettings(connectionSettings);
       setConfig(nextConfig);
-      setToast(`Now using ${formatProviderLabel(nextConfig.provider)} / ${nextConfig.model}.`);
+      setIsSettingsOpen(false);
+      setToast(`Now using ${nextConfig.connectionLabel}.`);
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Failed to switch provider.");
+      setConnectionNotice(error instanceof Error ? error.message : "Failed to save settings.");
     } finally {
-      setIsUpdatingModel(false);
-    }
-  }
-
-  async function handleReasoningEffortChange(reasoningEffort: "low" | "medium" | "high") {
-    if (reasoningEffort === config.reasoningEffort || isUpdatingModel) {
-      return;
-    }
-    setIsUpdatingModel(true);
-    try {
-      const nextConfig = await updateAppReasoningEffort(reasoningEffort);
-      setConfig(nextConfig);
-      setToast(`Now using ${nextConfig.model} / ${nextConfig.reasoningEffort}.`);
-    } catch (error) {
-      setToast(error instanceof Error ? error.message : "Failed to switch reasoning effort.");
-    } finally {
-      setIsUpdatingModel(false);
+      setIsSavingConnection(false);
     }
   }
 
@@ -277,34 +284,6 @@ export default function App() {
     );
   }
 
-  if (!config.isReady) {
-    return (
-      <main className="app-shell">
-        <section className="setup-screen">
-          <p className="panel-kicker">Setup required</p>
-          {config.provider === "openai" || config.provider === "deepseek" ? (
-            <>
-              <h1>Create a local `.env` file before using the AI panel</h1>
-              <pre className="setup-code">
-                {config.provider === "openai"
-                  ? `OPENAI_API_KEY=sk-...\nOPENAI_MODEL=${config.model}`
-                  : `DEEPSEEK_API_KEY=sk-...\nDEEPSEEK_MODEL=${config.model}`}
-              </pre>
-              <p>
-                The backend reads the API key from the project root. The browser never stores or receives the key.
-              </p>
-            </>
-          ) : (
-            <>
-              <h1>The selected provider is not ready</h1>
-              <p>Check the local Codex CLI installation and restart the backend.</p>
-            </>
-          )}
-        </section>
-      </main>
-    );
-  }
-
   return (
     <main className="app-shell">
       <SplitLayout
@@ -326,19 +305,12 @@ export default function App() {
           <AssistantPanel
             cards={cards}
             provider={config.provider}
-            providerOptions={config.providerOptions}
-            canSwitchProviders={config.canSwitchProviders}
+            connectionLabel={config.connectionLabel}
             model={config.model}
-            modelOptions={config.modelOptions}
-            canSwitchModels={config.canSwitchModels}
             reasoningEffort={config.reasoningEffort}
-            reasoningEffortOptions={config.reasoningEffortOptions}
-            canSwitchReasoningEffort={config.canSwitchReasoningEffort}
-            isUpdatingModel={isUpdatingModel}
+            isUpdatingModel={isSavingConnection || isTestingConnection}
             questionActionLabel={config.questionActionLabel}
-            onProviderChange={handleProviderChange}
-            onModelChange={handleModelChange}
-            onReasoningEffortChange={handleReasoningEffortChange}
+            onOpenSettings={() => void openSettingsModal()}
             onAsk={handleAsk}
             onDismiss={(cardId) => dispatchCardAction({ type: "dismiss_card", cardId })}
             onToggle={(cardId) => dispatchCardAction({ type: "toggle_card", cardId })}
@@ -347,19 +319,20 @@ export default function App() {
           />
         }
       />
+      <ConnectionSettingsModal
+        isOpen={isSettingsOpen}
+        settings={connectionSettings}
+        isSaving={isSavingConnection}
+        isTesting={isTestingConnection}
+        testResult={connectionNotice}
+        onClose={() => setIsSettingsOpen(false)}
+        onChange={setConnectionSettings}
+        onSave={() => void handleConnectionSave()}
+        onTest={() => void handleConnectionTest()}
+      />
       {toast ? <div className="toast">{toast}</div> : null}
     </main>
   );
-}
-
-function formatProviderLabel(provider: AppConfig["provider"]) {
-  if (provider === "deepseek") {
-    return "DeepSeek";
-  }
-  if (provider === "codex") {
-    return "Local Codex";
-  }
-  return "OpenAI";
 }
 
 async function appendChunkWithCadence(

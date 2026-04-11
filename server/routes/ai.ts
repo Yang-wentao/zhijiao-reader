@@ -1,6 +1,7 @@
 import { Router, type Response } from "express";
 import type { ProviderName } from "../config";
 import type { AIProvider, AskInput, TranslationInput } from "../providers/types";
+import type { ConnectionSettings, ConnectionTestInput, ConnectionTestResult } from "../runtimeConfig";
 
 type RouteOptions = {
   getProvider: () => AIProvider;
@@ -14,6 +15,11 @@ type RouteOptions = {
   getReasoningEffort: () => "low" | "medium" | "high" | null;
   getReasoningEffortOptions: () => Array<"low" | "medium" | "high">;
   getCanSwitchReasoningEffort: () => boolean;
+  getSetupRequired: () => boolean;
+  getConnectionLabel: () => string;
+  getConnectionSettings: () => ConnectionSettings;
+  saveConnectionSettings: (settings: ConnectionSettings) => Promise<void>;
+  testConnectionSettings: (input: ConnectionTestInput) => Promise<ConnectionTestResult>;
   setProvider?: (provider: ProviderName) => void;
   setModel?: (model: string) => void;
   setReasoningEffort?: (reasoningEffort: "low" | "medium" | "high") => void;
@@ -25,6 +31,33 @@ export function createAIRouter(options: RouteOptions) {
   const router = Router();
 
   router.get("/config", (_req, res) => {
+    res.json(buildConfigResponse(options));
+  });
+
+  router.get("/connection", (_req, res) => {
+    res.json(options.getConnectionSettings());
+  });
+
+  router.post("/connection/test", async (req, res) => {
+    try {
+      const result = await options.testConnectionSettings(req.body as ConnectionTestInput);
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Connection test failed.";
+      res.status(400).json({ ok: false, message });
+    }
+  });
+
+  router.post("/connection", async (req, res) => {
+    const body = req.body as ConnectionSettings | undefined;
+    if (!body) {
+      res.status(400).json({ error: "Connection settings are required." });
+      return;
+    }
+    await options.saveConnectionSettings(body);
+    if (options.setProvider) {
+      options.setProvider(body.activeProvider);
+    }
     res.json(buildConfigResponse(options));
   });
 
@@ -144,6 +177,8 @@ function buildConfigResponse(options: RouteOptions) {
     canSwitchReasoningEffort: options.getCanSwitchReasoningEffort(),
     questionActionLabel: "Ask Codex",
     maxSelectionChars: MAX_SELECTION_CHARS,
+    setupRequired: options.getSetupRequired(),
+    connectionLabel: options.getConnectionLabel(),
   };
 }
 
@@ -153,6 +188,9 @@ function getProviderErrorMessage(providerName: ProviderName) {
   }
   if (providerName === "deepseek") {
     return "DEEPSEEK_API_KEY is missing.";
+  }
+  if (providerName === "custom") {
+    return "Custom API credentials are missing.";
   }
   return "Provider is not ready.";
 }

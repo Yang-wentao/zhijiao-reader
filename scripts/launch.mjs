@@ -14,12 +14,11 @@ const nodeModulesPath = join(projectRoot, "node_modules");
 const args = new Set(process.argv.slice(2));
 const checkOnly = args.has("--check");
 const configureOnly = args.has("--configure-only");
-const nonInteractive = args.has("--non-interactive");
 
 try {
   await ensureEnv();
   const env = parseEnv(await readFile(envPath, "utf8"));
-  const readyEnv = await ensureProviderReady(env);
+  const readyEnv = await prepareEnvironment(env);
 
   if (!existsSync(nodeModulesPath)) {
     await runCommand(getNpmCommand(), ["install"], "Installing dependencies...");
@@ -58,43 +57,26 @@ async function ensureEnv() {
   }
 }
 
-async function ensureProviderReady(currentEnv) {
+async function prepareEnvironment(currentEnv) {
   let env = { ...currentEnv };
 
   if (!env.AI_PROVIDER) {
     env.AI_PROVIDER = "codex";
   }
 
-  if (needsConfiguration(env)) {
-    if (nonInteractive) {
-      throw new Error("Missing local configuration. Run `npm run configure` first.");
-    }
+  if (configureOnly) {
     env = await configureEnvironment(env);
   }
 
   if (env.AI_PROVIDER === "codex" && !isCodexAvailable(env.CODEX_BIN || "codex")) {
-    if (nonInteractive) {
-      throw new Error("Codex CLI is not available in the current shell.");
-    }
-    console.log("\nLocal Codex CLI was not found. Switching provider is recommended.");
-    env = await configureEnvironment(env, { forceProviderPrompt: true });
+    console.log("\nLocal Codex CLI was not found. You can fix this from the in-app settings dialog.");
   }
 
   await writeEnv(env);
   return env;
 }
 
-function needsConfiguration(env) {
-  if (env.AI_PROVIDER === "openai") {
-    return !env.OPENAI_API_KEY;
-  }
-  if (env.AI_PROVIDER === "deepseek") {
-    return !env.DEEPSEEK_API_KEY;
-  }
-  return false;
-}
-
-async function configureEnvironment(existingEnv, options = {}) {
+async function configureEnvironment(existingEnv) {
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -119,8 +101,6 @@ async function configureEnvironment(existingEnv, options = {}) {
     const chosenProvider = (providerAnswer.trim() || env.AI_PROVIDER).toLowerCase();
     if (["codex", "deepseek", "openai"].includes(chosenProvider)) {
       env.AI_PROVIDER = chosenProvider;
-    } else if (options.forceProviderPrompt) {
-      env.AI_PROVIDER = "deepseek";
     }
 
     if (env.AI_PROVIDER === "codex") {
@@ -234,6 +214,7 @@ function printSummary(env) {
     console.log(`- OpenAI key: ${env.OPENAI_API_KEY ? "configured" : "missing"}`);
     console.log(`- Model: ${env.OPENAI_MODEL || "gpt-4o"}`);
   }
+  console.log("- Runtime setup: use the in-app Settings dialog after launch");
 }
 
 async function openBrowser(url) {

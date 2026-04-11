@@ -1,5 +1,5 @@
 export type ReasoningEffort = "low" | "medium" | "high";
-export type ProviderName = "openai" | "codex" | "deepseek";
+export type ProviderName = "openai" | "codex" | "deepseek" | "custom";
 
 const DEFAULT_CODEX_MODEL = "gpt-5.4-mini";
 const DEFAULT_CODEX_REASONING_EFFORT: ReasoningEffort = "low";
@@ -68,7 +68,7 @@ function parseModelOptions(raw: string | undefined, fallbackModel: string, defau
 
 function getProvider(rawProvider: string | undefined): ProviderName {
   const normalized = rawProvider?.trim();
-  if (normalized === "codex" || normalized === "deepseek") {
+  if (normalized === "codex" || normalized === "deepseek" || normalized === "custom") {
     return normalized;
   }
   return "openai";
@@ -81,6 +81,9 @@ function getProviderModel(provider: ProviderName) {
   if (provider === "deepseek") {
     return process.env.DEEPSEEK_MODEL?.trim() || DEFAULT_DEEPSEEK_MODEL;
   }
+  if (provider === "custom") {
+    return process.env.CUSTOM_MODEL?.trim() || "custom-model";
+  }
   return process.env.OPENAI_MODEL?.trim() || "gpt-4o";
 }
 
@@ -90,6 +93,9 @@ function getProviderModelOptions(provider: ProviderName, model: string) {
   }
   if (provider === "deepseek") {
     return parseModelOptions(process.env.DEEPSEEK_MODEL_OPTIONS, model, DEFAULT_DEEPSEEK_MODEL_OPTIONS);
+  }
+  if (provider === "custom") {
+    return parseModelOptions(process.env.CUSTOM_MODEL_OPTIONS, model);
   }
   return parseModelOptions(process.env.OPENAI_MODEL_OPTIONS, model);
 }

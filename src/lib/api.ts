@@ -1,5 +1,5 @@
 import { readSseStream } from "./sse";
-import type { AppConfig, PassageCard } from "../types";
+import type { AppConfig, ConnectionSettings, ConnectionTestResult, PassageCard } from "../types";
 
 type StreamHandlers = {
   onDelta: (chunk: string) => void;
@@ -22,13 +22,57 @@ export async function updateAppProvider(provider: "openai" | "codex" | "deepseek
   return updateAppSettings({ provider });
 }
 
+export async function fetchConnectionSettings(): Promise<ConnectionSettings> {
+  const response = await fetch("/api/connection");
+  if (!response.ok) {
+    throw new Error("Failed to load connection settings.");
+  }
+  return (await response.json()) as ConnectionSettings;
+}
+
+export async function testConnectionSettings(settings: ConnectionSettings): Promise<ConnectionTestResult> {
+  const response = await fetch("/api/connection/test", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      provider: settings.activeProvider,
+      codex: settings.codex,
+      deepseek: settings.deepseek,
+      openai: settings.openai,
+      custom: settings.custom,
+    }),
+  });
+  const body = (await response.json()) as ConnectionTestResult;
+  if (!response.ok) {
+    throw new Error(body.message || "Connection test failed.");
+  }
+  return body;
+}
+
+export async function saveConnectionSettings(settings: ConnectionSettings): Promise<AppConfig> {
+  const response = await fetch("/api/connection", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(settings),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? "Failed to save connection settings.");
+  }
+  return (await response.json()) as AppConfig;
+}
+
 export async function updateAppReasoningEffort(reasoningEffort: "low" | "medium" | "high"): Promise<AppConfig> {
   return updateAppSettings({ reasoningEffort });
 }
 
 async function updateAppSettings(
   payload: {
-    provider?: "openai" | "codex" | "deepseek";
+    provider?: "openai" | "codex" | "deepseek" | "custom";
     model?: string;
     reasoningEffort?: "low" | "medium" | "high";
   },

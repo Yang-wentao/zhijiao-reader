@@ -1,14 +1,24 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
-import { getServerConfig, requireApiKey, type ProviderName, type ReasoningEffort } from "./config";
+import { spawnSync } from "node:child_process";
+import { type ReasoningEffort } from "./config";
 import { CodexProvider } from "./providers/codexProvider";
+import { CustomProvider } from "./providers/customProvider";
 import { DeepSeekProvider } from "./providers/deepseekProvider";
 import { OpenAIProvider } from "./providers/openaiProvider";
 import type { AIProvider } from "./providers/types";
 import { createAIRouter } from "./routes/ai";
+import {
+  buildConnectionLabel,
+  buildDefaultConnectionSettings,
+  loadConnectionSettings,
+  saveConnectionSettings as persistConnectionSettings,
+  testConnectionSettings,
+  type ConnectionSettings,
+  type ProviderName,
+} from "./runtimeConfig";
 
-const config = getServerConfig();
 const app = express();
 
 app.use(cors());
@@ -31,6 +41,15 @@ type ProviderRuntime = {
   setReasoningEffort?: (reasoningEffort: ReasoningEffort) => void;
 };
 
+type RuntimeState = {
+  settings: ConnectionSettings;
+  setupRequired: boolean;
+  runtimes: Record<ProviderName, ProviderRuntime>;
+  activeProviderName: ProviderName;
+};
+
+void bootstrap();
+
 function createUnavailableProvider(message: string): AIProvider {
   return {
     async streamTranslation() {
@@ -42,126 +61,189 @@ function createUnavailableProvider(message: string): AIProvider {
   };
 }
 
-const runtimes: Record<ProviderName, ProviderRuntime> = {
-  codex: (() => {
-    const provider = new CodexProvider({
-      codexBin: config.codexBin,
-      cwd: process.cwd(),
-      model: config.provider === "codex" ? config.model : "gpt-5.4-mini",
-      reasoningEffort: config.provider === "codex" ? config.reasoningEffort ?? "low" : "low",
-    });
-    let model = config.provider === "codex" ? config.model : "gpt-5.4-mini";
-    let reasoningEffort = config.provider === "codex" ? config.reasoningEffort ?? "low" : "low";
-    return {
-      provider,
-      isReady: true,
-      model,
+function createProviderRuntimeMap(settings: ConnectionSettings): Record<ProviderName, ProviderRuntime> {
+  const codexProvider = new CodexProvider({
+    codexBin: settings.codex.bin,
+    cwd: process.cwd(),
+    model: settings.codex.model,
+    reasoningEffort: settings.codex.reasoningEffort,
+  });
+
+  const codexReady = testCodexBinary(settings.codex.bin);
+  const openaiReady = settings.openai.apiKey.length > 0;
+  const deepseekReady = settings.deepseek.apiKey.length > 0;
+  const customReady =
+    settings.custom.apiKey.length > 0 && settings.custom.baseUrl.length > 0 && settings.custom.model.length > 0;
+
+  return {
+    codex: {
+      provider: codexReady ? codexProvider : createUnavailableProvider(`Unable to execute ${settings.codex.bin}.`),
+      isReady: codexReady,
+      model: settings.codex.model,
       modelOptions: ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"],
       canSwitchModels: true,
-      reasoningEffort,
+      reasoningEffort: settings.codex.reasoningEffort,
       reasoningEffortOptions: ["low", "medium", "high"],
       canSwitchReasoningEffort: true,
       setModel(nextModel: string) {
-        provider.setModel(nextModel);
+        codexProvider.setModel(nextModel);
         this.model = nextModel;
-        model = nextModel;
       },
       setReasoningEffort(nextEffort: ReasoningEffort) {
-        provider.setReasoningEffort(nextEffort);
+        codexProvider.setReasoningEffort(nextEffort);
         this.reasoningEffort = nextEffort;
-        reasoningEffort = nextEffort;
       },
-    };
-  })(),
-  openai: (() => {
-    const isReady = config.openAIApiKey.length > 0;
-    const provider = isReady
-      ? new OpenAIProvider({
-          apiKey: requireApiKey({ ...config, hasApiKey: true }),
-          model: config.provider === "openai" ? config.model : process.env.OPENAI_MODEL?.trim() || "gpt-4o",
-        })
-      : createUnavailableProvider("OPENAI_API_KEY is missing.");
-    return {
-      provider,
-      isReady,
-      model: config.provider === "openai" ? config.model : process.env.OPENAI_MODEL?.trim() || "gpt-4o",
-      modelOptions:
-        process.env.OPENAI_MODEL_OPTIONS?.split(",").map((item) => item.trim()).filter(Boolean) ||
-        ["gpt-4o", "gpt-4o-mini"],
+    },
+    openai: {
+      provider: openaiReady
+        ? new OpenAIProvider({
+            apiKey: settings.openai.apiKey,
+            model: settings.openai.model,
+            baseURL: settings.openai.baseUrl,
+          })
+        : createUnavailableProvider("OPENAI_API_KEY is missing."),
+      isReady: openaiReady,
+      model: settings.openai.model,
+      modelOptions: [settings.openai.model],
       canSwitchModels: true,
       reasoningEffort: null,
       reasoningEffortOptions: [],
       canSwitchReasoningEffort: false,
-      setModel(nextModel: string) {
-        this.model = nextModel;
-        if (provider instanceof OpenAIProvider) {
-          provider.setModel(nextModel);
-        }
-      },
-    };
-  })(),
-  deepseek: (() => {
-    const isReady = config.deepSeekApiKey.length > 0;
-    const initialModel = config.provider === "deepseek" ? config.model : process.env.DEEPSEEK_MODEL?.trim() || "deepseek-chat";
-    const provider = isReady
-      ? new DeepSeekProvider({
-          apiKey: config.deepSeekApiKey,
-          model: initialModel,
-        })
-      : createUnavailableProvider("DEEPSEEK_API_KEY is missing.");
-    return {
-      provider,
-      isReady,
-      model: initialModel,
-      modelOptions:
-        process.env.DEEPSEEK_MODEL_OPTIONS?.split(",").map((item) => item.trim()).filter(Boolean) ||
-        ["deepseek-chat", "deepseek-reasoner"],
+    },
+    deepseek: {
+      provider: deepseekReady
+        ? new DeepSeekProvider({
+            apiKey: settings.deepseek.apiKey,
+            model: settings.deepseek.model,
+            baseURL: settings.deepseek.baseUrl,
+          })
+        : createUnavailableProvider("DEEPSEEK_API_KEY is missing."),
+      isReady: deepseekReady,
+      model: settings.deepseek.model,
+      modelOptions: ["deepseek-chat", "deepseek-reasoner"],
       canSwitchModels: true,
       reasoningEffort: null,
       reasoningEffortOptions: [],
       canSwitchReasoningEffort: false,
-      setModel(nextModel: string) {
-        this.model = nextModel;
-        if (provider instanceof DeepSeekProvider) {
-          provider.setModel(nextModel);
-        }
-      },
-    };
-  })(),
-};
-
-let activeProviderName: ProviderName = config.provider;
-
-function getActiveRuntime() {
-  return runtimes[activeProviderName];
+    },
+    custom: {
+      provider: customReady
+        ? new CustomProvider({
+            apiKey: settings.custom.apiKey,
+            model: settings.custom.model,
+            baseURL: settings.custom.baseUrl,
+          })
+        : createUnavailableProvider("Custom API settings are incomplete."),
+      isReady: customReady,
+      model: settings.custom.model,
+      modelOptions: [settings.custom.model],
+      canSwitchModels: true,
+      reasoningEffort: null,
+      reasoningEffortOptions: [],
+      canSwitchReasoningEffort: false,
+    },
+  };
 }
 
-app.use(
-  "/api",
-  createAIRouter({
-    getProvider: () => getActiveRuntime().provider,
-    getProviderName: () => activeProviderName,
-    getProviderOptions: () => config.providerOptions,
-    getCanSwitchProviders: () => config.canSwitchProviders,
-    getIsReady: () => getActiveRuntime().isReady,
-    getModel: () => getActiveRuntime().model,
-    getModelOptions: () => getActiveRuntime().modelOptions,
-    getCanSwitchModels: () => getActiveRuntime().canSwitchModels,
-    getReasoningEffort: () => getActiveRuntime().reasoningEffort,
-    getReasoningEffortOptions: () => getActiveRuntime().reasoningEffortOptions,
-    getCanSwitchReasoningEffort: () => getActiveRuntime().canSwitchReasoningEffort,
-    setProvider: (providerName) => {
-      activeProviderName = providerName;
-    },
-    setModel: (model) => {
-      getActiveRuntime().setModel?.(model);
-    },
-    setReasoningEffort: (reasoningEffort) => {
-      getActiveRuntime().setReasoningEffort?.(reasoningEffort);
-    },
-  }),
-);
+async function initializeRuntimeState(): Promise<RuntimeState> {
+  const defaults = buildDefaultConnectionSettings(process.env);
+  const { settings, fileExists } = await loadConnectionSettings(process.env);
+  return {
+    settings,
+    setupRequired: !fileExists,
+    runtimes: createProviderRuntimeMap(settings),
+    activeProviderName: settings.activeProvider || defaults.activeProvider,
+  };
+}
 
-app.listen(config.port, () => {
-  console.log(`Server listening on http://localhost:${config.port}`);
-});
+function testCodexBinary(binary: string) {
+  const result = spawnSync(binary, ["--version"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  return result.status === 0;
+}
+
+async function bootstrap() {
+  const state: RuntimeState = await initializeRuntimeState();
+
+  app.use(
+    "/api",
+    createAIRouter({
+      getProvider: () => getActiveRuntime(state).provider,
+      getProviderName: () => state.activeProviderName,
+      getProviderOptions: () => ["codex", "deepseek", "openai", "custom"],
+      getCanSwitchProviders: () => true,
+      getIsReady: () => getActiveRuntime(state).isReady,
+      getModel: () => getActiveRuntime(state).model,
+      getModelOptions: () => getActiveRuntime(state).modelOptions,
+      getCanSwitchModels: () => getActiveRuntime(state).canSwitchModels,
+      getReasoningEffort: () => getActiveRuntime(state).reasoningEffort,
+      getReasoningEffortOptions: () => getActiveRuntime(state).reasoningEffortOptions,
+      getCanSwitchReasoningEffort: () => getActiveRuntime(state).canSwitchReasoningEffort,
+      getSetupRequired: () => buildAppConfig(state).setupRequired,
+      getConnectionLabel: () => buildConnectionLabel(state.settings),
+      getConnectionSettings: () => state.settings,
+      saveConnectionSettings: async (settings) => {
+        state.settings = settings;
+        state.runtimes = createProviderRuntimeMap(settings);
+        state.activeProviderName = settings.activeProvider;
+        state.setupRequired = false;
+        await persistConnectionSettings(settings);
+      },
+      testConnectionSettings,
+      setProvider: (providerName) => {
+        state.activeProviderName = providerName;
+        state.settings.activeProvider = providerName;
+      },
+      setModel: (model) => {
+        const runtime = getActiveRuntime(state);
+        runtime.setModel?.(model);
+        if (state.activeProviderName === "codex") {
+          state.settings.codex.model = model;
+        } else if (state.activeProviderName === "deepseek") {
+          state.settings.deepseek.model = model;
+        } else if (state.activeProviderName === "custom") {
+          state.settings.custom.model = model;
+        } else {
+          state.settings.openai.model = model;
+        }
+      },
+      setReasoningEffort: (reasoningEffort) => {
+        getActiveRuntime(state).setReasoningEffort?.(reasoningEffort);
+        if (state.activeProviderName === "codex") {
+          state.settings.codex.reasoningEffort = reasoningEffort;
+        }
+      },
+    }),
+  );
+
+  app.listen(Number(process.env.PORT ?? 8787), () => {
+    console.log(`Server listening on http://localhost:${process.env.PORT ?? 8787}`);
+  });
+}
+
+function getActiveRuntime(state: RuntimeState) {
+  return state.runtimes[state.activeProviderName];
+}
+
+function buildAppConfig(state: RuntimeState) {
+  const runtime = getActiveRuntime(state);
+  return {
+    hasApiKey: state.activeProviderName === "codex" ? false : runtime.isReady,
+    isReady: runtime.isReady,
+    provider: state.activeProviderName,
+    providerOptions: ["codex", "deepseek", "openai", "custom"] satisfies ProviderName[],
+    canSwitchProviders: true,
+    model: runtime.model,
+    modelOptions: runtime.modelOptions,
+    canSwitchModels: runtime.canSwitchModels,
+    reasoningEffort: runtime.reasoningEffort,
+    reasoningEffortOptions: runtime.reasoningEffortOptions,
+    canSwitchReasoningEffort: runtime.canSwitchReasoningEffort,
+    questionActionLabel: "Ask Codex",
+    maxSelectionChars: 8000,
+    setupRequired: state.setupRequired || !runtime.isReady,
+    connectionLabel: buildConnectionLabel(state.settings),
+  };
+}

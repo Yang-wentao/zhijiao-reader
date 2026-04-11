@@ -7,3 +7,5 @@ npm-debug.log*
 .superpowers
 snapshots
 *.app
+release/*.zip
+config/providers.local.json
