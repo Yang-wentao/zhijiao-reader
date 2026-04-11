@@ -94,7 +94,7 @@ describe("App selection flow", () => {
       hasApiKey: false,
       isReady: true,
       provider: "codex",
-      providerOptions: ["codex", "deepseek", "openai", "custom"],
+      providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"],
       canSwitchProviders: true,
       model: "gpt-5.4-mini",
       modelOptions: ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"],
@@ -119,6 +119,11 @@ describe("App selection flow", () => {
         model: "deepseek-chat",
         baseUrl: "https://api.deepseek.com",
       },
+      sjtu: {
+        apiKey: "",
+        model: "deepseek-chat",
+        baseUrl: "https://models.sjtu.edu.cn/api/v1",
+      },
       openai: {
         apiKey: "",
         model: "gpt-4o",
@@ -135,9 +140,14 @@ describe("App selection flow", () => {
       hasApiKey: false,
       isReady: true,
       provider: settings.activeProvider,
-      providerOptions: ["codex", "deepseek", "openai", "custom"],
+      providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"],
       canSwitchProviders: true,
-      model: settings.activeProvider === "deepseek" ? settings.deepseek.model : "gpt-5.4-mini",
+      model:
+        settings.activeProvider === "deepseek"
+          ? settings.deepseek.model
+          : settings.activeProvider === "sjtu"
+            ? settings.sjtu.model
+            : "gpt-5.4-mini",
       modelOptions: ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"],
       canSwitchModels: true,
       reasoningEffort: "low",
@@ -149,6 +159,8 @@ describe("App selection flow", () => {
       connectionLabel:
         settings.activeProvider === "deepseek"
           ? `DeepSeek · ${settings.deepseek.model}`
+          : settings.activeProvider === "sjtu"
+            ? `SJTU API · ${settings.sjtu.model}`
           : "Local Codex · gpt-5.4-mini · low",
     }));
     testConnectionSettings.mockResolvedValue({
@@ -188,7 +200,7 @@ describe("App selection flow", () => {
       hasApiKey: false,
       isReady: false,
       provider: "codex",
-      providerOptions: ["codex", "deepseek", "openai", "custom"],
+      providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"],
       canSwitchProviders: true,
       model: "gpt-5.4-mini",
       modelOptions: ["gpt-5.4-mini"],
@@ -225,5 +237,48 @@ describe("App selection flow", () => {
 
     await waitFor(() => expect(saveConnectionSettings).toHaveBeenCalledTimes(1));
     expect(screen.getByText("DeepSeek · deepseek-chat")).toBeInTheDocument();
+  });
+
+  it("shows DeepSeek model as a fixed select with recommended chat default", async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+
+    const providerSelect = await screen.findByRole("combobox", { name: "Connection provider" });
+    fireEvent.change(providerSelect, { target: { value: "deepseek" } });
+
+    expect(await screen.findByRole("combobox", { name: "Model name" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "deepseek-chat（推荐）" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "deepseek-reasoner" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Model name" })).not.toBeInTheDocument();
+  });
+
+  it("shows codex model as a fixed select with three options", async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+
+    expect(await screen.findByRole("combobox", { name: "Codex model" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "gpt-5.4-mini" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "gpt-5.4" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "gpt-5.3-codex-spark" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Codex model" })).not.toBeInTheDocument();
+  });
+
+  it("shows SJTU API as a first-class provider option", async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+
+    const providerSelect = await screen.findByRole("combobox", { name: "Connection provider" });
+    expect(screen.getByRole("option", { name: "SJTU API" })).toBeInTheDocument();
+
+    fireEvent.change(providerSelect, { target: { value: "sjtu" } });
+    expect(await screen.findByDisplayValue("https://models.sjtu.edu.cn/api/v1")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "deepseek-chat（推荐）" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "deepseek-reasoner" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "glm-5" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "minimax" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "minimax-m2.5" })).toBeInTheDocument();
   });
 });

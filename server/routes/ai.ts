@@ -189,6 +189,9 @@ function getProviderErrorMessage(providerName: ProviderName) {
   if (providerName === "deepseek") {
     return "DEEPSEEK_API_KEY is missing.";
   }
+  if (providerName === "sjtu") {
+    return "SJTU API credentials are missing.";
+  }
   if (providerName === "custom") {
     return "Custom API credentials are missing.";
   }
@@ -200,20 +203,29 @@ async function streamSse(res: Response, iterablePromise: Promise<AsyncIterable<s
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
+  writeSseEvent(res, "status", { message: "Request accepted." });
+
+  const heartbeatId = setInterval(() => {
+    writeSseEvent(res, "status", { message: "The model is still working." });
+  }, 10000);
 
   try {
     const iterable = await iterablePromise;
     for await (const chunk of iterable) {
-      res.write(`event: delta\n`);
-      res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+      writeSseEvent(res, "delta", { text: chunk });
     }
-    res.write(`event: done\n`);
-    res.write(`data: ${JSON.stringify({ ok: true })}\n\n`);
+    writeSseEvent(res, "done", { ok: true });
     res.end();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown AI error";
-    res.write(`event: error\n`);
-    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    writeSseEvent(res, "error", { error: message });
     res.end();
+  } finally {
+    clearInterval(heartbeatId);
   }
+}
+
+function writeSseEvent(res: Response, event: string, payload: Record<string, unknown>) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
 }

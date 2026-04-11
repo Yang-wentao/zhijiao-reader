@@ -5,18 +5,18 @@ import type { AIProvider, AskInput, ChatMessage, TranslationInput } from "./type
 type ProviderOptions = {
   apiKey: string;
   model: string;
-  baseURL?: string;
+  baseURL: string;
 };
 
-export class DeepSeekProvider implements AIProvider {
+export class SjtuProvider implements AIProvider {
   private client: OpenAI;
   private model: string;
 
   constructor(options: ProviderOptions) {
     this.client = new OpenAI({
       apiKey: options.apiKey,
-      baseURL: options.baseURL || "https://api.deepseek.com",
-      timeout: 45_000,
+      baseURL: options.baseURL,
+      timeout: 180_000,
     });
     this.model = options.model;
   }

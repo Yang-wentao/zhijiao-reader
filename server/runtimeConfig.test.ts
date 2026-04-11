@@ -19,6 +19,7 @@ describe("runtime connection config", () => {
     expect(settings.activeProvider).toBe("deepseek");
     expect(settings.deepseek.apiKey).toBe("deepseek-key");
     expect(settings.deepseek.model).toBe("deepseek-chat");
+    expect(settings.sjtu.baseUrl).toBe("https://models.sjtu.edu.cn/api/v1");
     expect(settings.custom.baseUrl).toBe("https://api.openai.com/v1");
   });
 

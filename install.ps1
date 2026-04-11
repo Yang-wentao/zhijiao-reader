@@ -3,6 +3,10 @@ $ErrorActionPreference = "Stop"
 $appDir = if ($env:APP_DIR) { $env:APP_DIR } else { Join-Path $HOME "codex-paper-reader" }
 $repoUrl = if ($env:REPO_URL) { $env:REPO_URL } else { "https://github.com/YOUR_GITHUB_NAME/codex-paper-reader.git" }
 
+if ($repoUrl -like "*YOUR_GITHUB_NAME*") {
+  throw "Set REPO_URL to your published GitHub repository before using install.ps1. Example: `$env:REPO_URL='https://github.com/<owner>/codex-paper-reader.git'"
+}
+
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
   throw "git is required."
 }

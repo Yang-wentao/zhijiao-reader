@@ -19,7 +19,7 @@ const DEFAULT_CONFIG: AppConfig = {
   hasApiKey: false,
   isReady: false,
   provider: "openai",
-  providerOptions: ["openai"],
+  providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"],
   canSwitchProviders: false,
   model: "gpt-4o",
   modelOptions: ["gpt-4o"],
@@ -77,6 +77,7 @@ export default function App() {
       tabsRef.current.forEach((tab) => URL.revokeObjectURL(tab.fileUrl));
     };
   }, []);
+
 
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) ?? null,

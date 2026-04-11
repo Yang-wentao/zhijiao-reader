@@ -14,11 +14,7 @@ const packagedServerEntry = app.isPackaged
 let mainWindow = null;
 let startedServer = null;
 
-app.whenReady().then(async () => {
-  if (!isDev) {
-    startedServer = await startEmbeddedServer();
-  }
-
+function createMainWindow() {
   const window = new BrowserWindow({
     width: 1680,
     height: 1040,
@@ -33,15 +29,26 @@ app.whenReady().then(async () => {
     },
   });
 
-  mainWindow = window;
-
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
   });
 
-  const targetUrl = isDev ? rendererUrl : `http://127.0.0.1:${startedServer.port}`;
-  await window.loadURL(targetUrl);
+  mainWindow = window;
+  return window;
+}
+
+function getTargetUrl() {
+  return isDev ? rendererUrl : `http://127.0.0.1:${startedServer.port}`;
+}
+
+app.whenReady().then(async () => {
+  if (!isDev) {
+    startedServer = await startEmbeddedServer();
+  }
+
+  const window = createMainWindow();
+  await window.loadURL(getTargetUrl());
 });
 
 app.on("window-all-closed", async () => {
@@ -55,22 +62,8 @@ app.on("window-all-closed", async () => {
 
 app.on("activate", async () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    const window = new BrowserWindow({
-      width: 1680,
-      height: 1040,
-      minWidth: 1180,
-      minHeight: 760,
-      title: "Codex Paper Reader",
-      autoHideMenuBar: true,
-      webPreferences: {
-        preload: join(__dirname, "preload.mjs"),
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-    mainWindow = window;
-    const targetUrl = isDev ? rendererUrl : `http://127.0.0.1:${startedServer.port}`;
-    await window.loadURL(targetUrl);
+    const window = createMainWindow();
+    await window.loadURL(getTargetUrl());
   }
 });
 

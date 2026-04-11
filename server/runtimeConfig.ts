@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import OpenAI from "openai";
 import type { ReasoningEffort } from "./config.js";
 
-export type ProviderName = "openai" | "codex" | "deepseek" | "custom";
+export type ProviderName = "openai" | "codex" | "deepseek" | "sjtu" | "custom";
 
 export type ConnectionSettings = {
   activeProvider: ProviderName;
@@ -15,6 +15,11 @@ export type ConnectionSettings = {
     reasoningEffort: ReasoningEffort;
   };
   deepseek: {
+    apiKey: string;
+    model: string;
+    baseUrl: string;
+  };
+  sjtu: {
     apiKey: string;
     model: string;
     baseUrl: string;
@@ -35,6 +40,7 @@ export type ConnectionSettings = {
 type PartialConnectionSettings = Partial<ConnectionSettings> & {
   codex?: Partial<ConnectionSettings["codex"]>;
   deepseek?: Partial<ConnectionSettings["deepseek"]>;
+  sjtu?: Partial<ConnectionSettings["sjtu"]>;
   openai?: Partial<ConnectionSettings["openai"]>;
   custom?: Partial<ConnectionSettings["custom"]>;
 };
@@ -43,6 +49,7 @@ export type ConnectionTestInput = {
   provider: ProviderName;
   codex?: Partial<ConnectionSettings["codex"]>;
   deepseek?: Partial<ConnectionSettings["deepseek"]>;
+  sjtu?: Partial<ConnectionSettings["sjtu"]>;
   openai?: Partial<ConnectionSettings["openai"]>;
   custom?: Partial<ConnectionSettings["custom"]>;
 };
@@ -67,6 +74,11 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
       apiKey: env.DEEPSEEK_API_KEY?.trim() || "",
       model: env.DEEPSEEK_MODEL?.trim() || "deepseek-chat",
       baseUrl: env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com",
+    },
+    sjtu: {
+      apiKey: env.SJTU_API_KEY?.trim() || "",
+      model: env.SJTU_MODEL?.trim() || "deepseek-chat",
+      baseUrl: env.SJTU_BASE_URL?.trim() || "https://models.sjtu.edu.cn/api/v1",
     },
     openai: {
       apiKey: env.OPENAI_API_KEY?.trim() || "",
@@ -97,6 +109,11 @@ export function mergeConnectionSettings(
       apiKey: overrides?.deepseek?.apiKey?.trim() || defaults.deepseek.apiKey,
       model: overrides?.deepseek?.model?.trim() || defaults.deepseek.model,
       baseUrl: overrides?.deepseek?.baseUrl?.trim() || defaults.deepseek.baseUrl,
+    },
+    sjtu: {
+      apiKey: overrides?.sjtu?.apiKey?.trim() || defaults.sjtu.apiKey,
+      model: overrides?.sjtu?.model?.trim() || defaults.sjtu.model,
+      baseUrl: overrides?.sjtu?.baseUrl?.trim() || defaults.sjtu.baseUrl,
     },
     openai: {
       apiKey: overrides?.openai?.apiKey?.trim() || defaults.openai.apiKey,
@@ -188,6 +205,9 @@ export function buildConnectionLabel(settings: ConnectionSettings) {
   if (settings.activeProvider === "deepseek") {
     return `DeepSeek · ${settings.deepseek.model}`;
   }
+  if (settings.activeProvider === "sjtu") {
+    return `SJTU API · ${settings.sjtu.model}`;
+  }
   if (settings.activeProvider === "custom") {
     return `${settings.custom.label} · ${settings.custom.model}`;
   }
@@ -195,7 +215,7 @@ export function buildConnectionLabel(settings: ConnectionSettings) {
 }
 
 function normalizeProvider(provider: string | undefined | null): ProviderName {
-  if (provider === "codex" || provider === "deepseek" || provider === "custom") {
+  if (provider === "codex" || provider === "deepseek" || provider === "sjtu" || provider === "custom") {
     return provider;
   }
   return "openai";
@@ -214,6 +234,13 @@ function getRemoteConfig(input: ConnectionTestInput) {
       apiKey: input.deepseek?.apiKey?.trim() || "",
       model: input.deepseek?.model?.trim() || "",
       baseUrl: input.deepseek?.baseUrl?.trim() || "",
+    };
+  }
+  if (input.provider === "sjtu") {
+    return {
+      apiKey: input.sjtu?.apiKey?.trim() || "",
+      model: input.sjtu?.model?.trim() || "",
+      baseUrl: input.sjtu?.baseUrl?.trim() || "",
     };
   }
   if (input.provider === "custom") {

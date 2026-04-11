@@ -11,6 +11,7 @@ import { CodexProvider } from "./providers/codexProvider.js";
 import { CustomProvider } from "./providers/customProvider.js";
 import { DeepSeekProvider } from "./providers/deepseekProvider.js";
 import { OpenAIProvider } from "./providers/openaiProvider.js";
+import { SjtuProvider } from "./providers/sjtuProvider.js";
 import type { AIProvider } from "./providers/types.js";
 import { createAIRouter } from "./routes/ai.js";
 import {
@@ -72,7 +73,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
     createAIRouter({
       getProvider: () => getActiveRuntime(state).provider,
       getProviderName: () => state.activeProviderName,
-      getProviderOptions: () => ["codex", "deepseek", "openai", "custom"],
+      getProviderOptions: () => ["codex", "deepseek", "sjtu", "openai", "custom"],
       getCanSwitchProviders: () => true,
       getIsReady: () => getActiveRuntime(state).isReady,
       getModel: () => getActiveRuntime(state).model,
@@ -103,6 +104,8 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
           state.settings.codex.model = model;
         } else if (state.activeProviderName === "deepseek") {
           state.settings.deepseek.model = model;
+        } else if (state.activeProviderName === "sjtu") {
+          state.settings.sjtu.model = model;
         } else if (state.activeProviderName === "custom") {
           state.settings.custom.model = model;
         } else {
@@ -178,6 +181,7 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
   const codexReady = testCodexBinary(settings.codex.bin);
   const openaiReady = settings.openai.apiKey.length > 0;
   const deepseekReady = settings.deepseek.apiKey.length > 0;
+  const sjtuReady = settings.sjtu.apiKey.length > 0 && settings.sjtu.baseUrl.length > 0 && settings.sjtu.model.length > 0;
   const customReady =
     settings.custom.apiKey.length > 0 && settings.custom.baseUrl.length > 0 && settings.custom.model.length > 0;
 
@@ -232,6 +236,22 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
       reasoningEffortOptions: [],
       canSwitchReasoningEffort: false,
     },
+    sjtu: {
+      provider: sjtuReady
+        ? new SjtuProvider({
+            apiKey: settings.sjtu.apiKey,
+            model: settings.sjtu.model,
+            baseURL: settings.sjtu.baseUrl,
+          })
+        : createUnavailableProvider("SJTU API settings are incomplete."),
+      isReady: sjtuReady,
+      model: settings.sjtu.model,
+      modelOptions: ["deepseek-chat", "deepseek-reasoner", "glm-5", "minimax", "minimax-m2.5", "qwen3coder"],
+      canSwitchModels: true,
+      reasoningEffort: null,
+      reasoningEffortOptions: [],
+      canSwitchReasoningEffort: false,
+    },
     custom: {
       provider: customReady
         ? new CustomProvider({
@@ -272,7 +292,7 @@ function buildAppConfig(state: RuntimeState) {
     hasApiKey: state.activeProviderName === "codex" ? false : runtime.isReady,
     isReady: runtime.isReady,
     provider: state.activeProviderName,
-    providerOptions: ["codex", "deepseek", "openai", "custom"] satisfies ProviderName[],
+    providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"] satisfies ProviderName[],
     canSwitchProviders: true,
     model: runtime.model,
     modelOptions: runtime.modelOptions,

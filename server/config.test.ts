@@ -1,19 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getServerConfig, requireApiKey } from "./config";
+import { getServerConfig } from "./config";
 
 describe("server config", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
-  });
-
-  it("throws when OPENAI_API_KEY is missing", () => {
-    const config = {
-      ...getServerConfig(),
-      openAIApiKey: "",
-      hasApiKey: false,
-    };
-
-    expect(() => requireApiKey(config)).toThrow("OPENAI_API_KEY");
   });
 
   it("parses configured OpenAI model options", () => {

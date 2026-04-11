@@ -1,16 +1,23 @@
 # Codex Paper Reader
 
-Local web MVP for reading a PDF on the left and using an AI assistant on the right.
+Local PDF reader with a two-pane paper reading workflow: PDF on the left, AI translation and Q&A on the right.
 
 ## What It Is
 
 - Frontend: React + Vite
 - Backend: Express + Node.js
+- Desktop shell: Electron
 - PDF viewer: `@react-pdf-viewer/core`
 - Math rendering: `react-markdown` + `remark-math` + `rehype-katex`
-- AI backends: local Codex CLI, DeepSeek API, OpenAI API
+- AI backends: local Codex CLI, DeepSeek API, SJTU API, OpenAI API, custom OpenAI-compatible endpoints
 
-It runs as a local web app in your browser. It is not yet a native macOS or Windows desktop app.
+By default it runs as a local web app in your browser. The repository also includes an Electron shell for packaged desktop builds.
+
+## Prerequisites
+
+- Node.js 20+
+- npm 10+
+- Optional: local `codex` CLI if you want to use `Local Codex`
 
 ## Setup
 
@@ -26,6 +33,12 @@ Runtime connection settings are stored locally in `config/providers.local.json`,
 
 ```bash
 npm install
+npm run launch
+```
+
+Development mode:
+
+```bash
 npm run dev
 ```
 
@@ -33,8 +46,8 @@ npm run dev
 
 You can also use the packaged startup entry points:
 
-- macOS: double-click [Launch Codex Paper Reader.command](/Users/yangwentao/Documents/软件开发尝试/Launch%20Codex%20Paper%20Reader.command)
-- Windows: double-click [Launch Codex Paper Reader.bat](/Users/yangwentao/Documents/软件开发尝试/Launch%20Codex%20Paper%20Reader.bat)
+- macOS: double-click `Launch Codex Paper Reader.command`
+- Windows: double-click `Launch Codex Paper Reader.bat`
 - Terminal:
 
 ```bash
@@ -60,12 +73,12 @@ npm run electron:pack
 
 After launch, the app can open a connection settings dialog automatically when setup is still incomplete.
 
-`npm run release:zip` will create a versioned `.zip` in [`release/`](/Users/yangwentao/Documents/软件开发尝试/release) from the current committed git state.
+`npm run release:zip` will create a versioned `.zip` in `release/` from the current committed git state.
 
 GitHub publish helper docs:
 
-- [GitHub Distribution](/Users/yangwentao/Documents/软件开发尝试/docs/github-distribution.md)
-- [Electron Packaging](/Users/yangwentao/Documents/软件开发尝试/docs/electron-packaging.md)
+- [GitHub Distribution](docs/github-distribution.md)
+- [Electron Packaging](docs/electron-packaging.md)
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8787`
@@ -80,6 +93,7 @@ GitHub publish helper docs:
 - Copy or retry responses
 - Resize the split panes
 - Switch backend provider between OpenAI, DeepSeek, and local Codex CLI
+- Use SJTU's OpenAI-compatible API endpoint
 - Use a custom OpenAI-compatible API endpoint with base URL, model name, and API key
 - Test provider connectivity from the in-app settings dialog before saving
 - Run as an Electron desktop shell during development
@@ -94,3 +108,22 @@ GitHub publish helper docs:
 - Custom API mode expects an OpenAI-compatible `/v1` endpoint
 - Local Codex is still not true token-by-token streaming; the app simulates a more readable progressive reveal on the frontend
 - Electron packaging is present, but signing and notarization are not configured yet
+
+## GitHub Quick Start
+
+Once the repository is published, users can either:
+
+1. Clone and launch from source:
+
+```bash
+git clone https://github.com/<owner>/codex-paper-reader.git
+cd codex-paper-reader
+npm run launch
+```
+
+2. Download a packaged build from GitHub Releases:
+   - macOS: unsigned `.zip`
+   - Windows: `.zip`
+   - Linux: `.AppImage`
+
+Users who want `Local Codex` still need to install the Codex CLI separately on their own machine.

@@ -18,7 +18,9 @@ export async function updateAppModel(model: string): Promise<AppConfig> {
   return updateAppSettings({ model });
 }
 
-export async function updateAppProvider(provider: "openai" | "codex" | "deepseek"): Promise<AppConfig> {
+export async function updateAppProvider(
+  provider: "openai" | "codex" | "deepseek" | "sjtu" | "custom",
+): Promise<AppConfig> {
   return updateAppSettings({ provider });
 }
 
@@ -40,6 +42,7 @@ export async function testConnectionSettings(settings: ConnectionSettings): Prom
       provider: settings.activeProvider,
       codex: settings.codex,
       deepseek: settings.deepseek,
+      sjtu: settings.sjtu,
       openai: settings.openai,
       custom: settings.custom,
     }),
@@ -72,7 +75,7 @@ export async function updateAppReasoningEffort(reasoningEffort: "low" | "medium"
 
 async function updateAppSettings(
   payload: {
-    provider?: "openai" | "codex" | "deepseek" | "custom";
+    provider?: "openai" | "codex" | "deepseek" | "sjtu" | "custom";
     model?: string;
     reasoningEffort?: "low" | "medium" | "high";
   },
@@ -120,23 +123,50 @@ export async function streamAsk(
 }
 
 async function streamRequest(endpoint: string, payload: unknown, handlers: StreamHandlers) {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  let timeoutId: number | null = null;
+  let timedOut = false;
+  const resetTimeout = () => {
+    if (timeoutId != null) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 45_000);
+  };
 
-  await readSseStream(response, (event, data) => {
-    if (event === "delta" && typeof data.text === "string") {
-      handlers.onDelta(data.text);
+  try {
+    resetTimeout();
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    await readSseStream(response, (event, data) => {
+      resetTimeout();
+      if (event === "delta" && typeof data.text === "string") {
+        handlers.onDelta(data.text);
+      }
+      if (event === "error" && typeof data.error === "string") {
+        throw new Error(data.error);
+      }
+      if (event === "done") {
+        handlers.onDone();
+      }
+    });
+  } catch (error) {
+    if (timedOut || controller.signal.aborted) {
+      throw new Error("The request timed out after 45 seconds. Please retry or switch models.");
     }
-    if (event === "error" && typeof data.error === "string") {
-      throw new Error(data.error);
+    throw error;
+  } finally {
+    if (timeoutId != null) {
+      window.clearTimeout(timeoutId);
     }
-    if (event === "done") {
-      handlers.onDone();
-    }
-  });
+  }
 }

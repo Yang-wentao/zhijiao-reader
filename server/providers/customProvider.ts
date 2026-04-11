@@ -16,6 +16,7 @@ export class CustomProvider implements AIProvider {
     this.client = new OpenAI({
       apiKey: options.apiKey,
       baseURL: options.baseURL,
+      timeout: 45_000,
     });
     this.model = options.model;
   }

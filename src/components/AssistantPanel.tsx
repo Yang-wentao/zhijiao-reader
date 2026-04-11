@@ -3,7 +3,7 @@ import { PassageCard } from "./PassageCard";
 
 type AssistantPanelProps = {
   cards: PassageCardType[];
-  provider: "openai" | "codex" | "deepseek" | "custom";
+  provider: "openai" | "codex" | "deepseek" | "sjtu" | "custom";
   connectionLabel: string;
   model: string;
   reasoningEffort: "low" | "medium" | "high" | null;
@@ -82,9 +82,12 @@ export function AssistantPanel({
   );
 }
 
-function formatProviderLabel(provider: "openai" | "codex" | "deepseek" | "custom") {
+function formatProviderLabel(provider: "openai" | "codex" | "deepseek" | "sjtu" | "custom") {
   if (provider === "deepseek") {
     return "DeepSeek";
+  }
+  if (provider === "sjtu") {
+    return "SJTU API";
   }
   if (provider === "codex") {
     return "Local Codex";

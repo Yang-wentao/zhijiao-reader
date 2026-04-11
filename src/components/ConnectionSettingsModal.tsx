@@ -16,8 +16,22 @@ type ConnectionSettingsModalProps = {
 const PROVIDER_OPTIONS = [
   { value: "codex", label: "Local Codex" },
   { value: "deepseek", label: "DeepSeek" },
+  { value: "sjtu", label: "SJTU API" },
   { value: "openai", label: "OpenAI" },
   { value: "custom", label: "Custom API" },
+] as const;
+
+const CODEX_MODEL_OPTIONS = ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"] as const;
+const DEEPSEEK_MODEL_OPTIONS = [
+  { value: "deepseek-chat", label: "deepseek-chat（推荐）" },
+  { value: "deepseek-reasoner", label: "deepseek-reasoner" },
+] as const;
+const SJTU_MODEL_OPTIONS = [
+  { value: "deepseek-chat", label: "deepseek-chat（推荐）" },
+  { value: "deepseek-reasoner", label: "deepseek-reasoner" },
+  { value: "glm-5", label: "glm-5" },
+  { value: "minimax-m2.5", label: "minimax-m2.5" },
+  { value: "qwen3coder", label: "qwen3coder" },
 ] as const;
 
 export function ConnectionSettingsModal({
@@ -39,7 +53,7 @@ export function ConnectionSettingsModal({
     if (activeProvider === "codex") {
       return (
         <>
-          <label className="settings-field">
+          <label className="settings-field settings-field-wide">
             <span>Codex binary</span>
             <input
               aria-label="Codex binary"
@@ -56,9 +70,9 @@ export function ConnectionSettingsModal({
             />
           </label>
           <label className="settings-field">
-            <span>Model name</span>
-            <input
-              aria-label="Model name"
+            <span>Codex model</span>
+            <select
+              aria-label="Codex model"
               value={settings.codex.model}
               onChange={(event) =>
                 onChange({
@@ -69,7 +83,13 @@ export function ConnectionSettingsModal({
                   },
                 })
               }
-            />
+            >
+              {CODEX_MODEL_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="settings-field">
             <span>Reasoning</span>
@@ -95,7 +115,14 @@ export function ConnectionSettingsModal({
       );
     }
 
-    const target = activeProvider === "deepseek" ? settings.deepseek : activeProvider === "custom" ? settings.custom : settings.openai;
+    const target =
+      activeProvider === "deepseek"
+        ? settings.deepseek
+        : activeProvider === "sjtu"
+          ? settings.sjtu
+          : activeProvider === "custom"
+            ? settings.custom
+            : settings.openai;
 
     return (
       <>
@@ -117,7 +144,7 @@ export function ConnectionSettingsModal({
             />
           </label>
         ) : null}
-        <label className="settings-field">
+        <label className={`settings-field ${activeProvider === "custom" ? "" : "settings-field-wide"}`.trim()}>
           <span>Base URL</span>
           <input
             aria-label="Base URL"
@@ -134,24 +161,74 @@ export function ConnectionSettingsModal({
             }}
           />
         </label>
-        <label className="settings-field">
-          <span>Model name</span>
-          <input
-            aria-label="Model name"
-            value={target.model}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              onChange({
-                ...settings,
-                [activeProvider]: {
-                  ...target,
-                  model: nextValue,
-                },
-              });
-            }}
-          />
-        </label>
-        <label className="settings-field">
+        {activeProvider === "deepseek" ? (
+          <label className="settings-field">
+            <span>Model name</span>
+            <select
+              aria-label="Model name"
+              value={target.model}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                onChange({
+                  ...settings,
+                  [activeProvider]: {
+                    ...target,
+                    model: nextValue,
+                  },
+                });
+              }}
+            >
+              {DEEPSEEK_MODEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : activeProvider === "sjtu" ? (
+          <label className="settings-field">
+            <span>Model name</span>
+            <select
+              aria-label="Model name"
+              value={target.model}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                onChange({
+                  ...settings,
+                  [activeProvider]: {
+                    ...target,
+                    model: nextValue,
+                  },
+                });
+              }}
+            >
+              {SJTU_MODEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label className="settings-field">
+            <span>Model name</span>
+            <input
+              aria-label="Model name"
+              value={target.model}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                onChange({
+                  ...settings,
+                  [activeProvider]: {
+                    ...target,
+                    model: nextValue,
+                  },
+                });
+              }}
+            />
+          </label>
+        )}
+        <label className="settings-field settings-field-wide">
           <span>API key</span>
           <input
             aria-label="API key"
@@ -191,7 +268,7 @@ export function ConnectionSettingsModal({
         </header>
 
         <div className="settings-grid">
-          <label className="settings-field">
+          <label className="settings-field settings-field-wide">
             <span>Connection provider</span>
             <select
               aria-label="Connection provider"
