@@ -1,5 +1,12 @@
 [
   {
+    "file": "codex-paper-reader-a0ad4d5-20260411-220505.zip",
+    "commit": "a0ad4d52b1ce0b82e5640ec4a8919a72702b68fc",
+    "shortCommit": "a0ad4d5",
+    "subject": "feat: add GitHub installer and Electron shell",
+    "createdAt": "2026-04-11T14:05:05.224Z"
+  },
+  {
     "file": "codex-paper-reader-dc95d53-20260411-215251.zip",
     "commit": "dc95d53d55cbef89ede5500748cdc300188e7db4",
     "shortCommit": "dc95d53",
