@@ -17,7 +17,7 @@
     "launch": "node scripts/launch.mjs",
     "build": "tsc -b && vite build",
     "electron:dev": "concurrently -k \"npm run dev:server\" \"npm run dev:client\" \"wait-on http://127.0.0.1:5173 http://127.0.0.1:8787 && electron electron/main.mjs\"",
-    "electron:pack": "npm run build && npm run build:server && electron-builder --config electron-builder.json",
+    "electron:pack": "npm run build && npm run build:server && electron-builder --config electron-builder.json --publish never",
     "test": "vitest run"
   },
   "dependencies": {

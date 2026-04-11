@@ -22,13 +22,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Create source zip
-        run: npm run release:zip
+        run: node scripts/create-release.mjs
 
       - name: Upload source archive to release
         uses: softprops/action-gh-release@v2

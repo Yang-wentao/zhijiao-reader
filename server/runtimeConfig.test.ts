@@ -45,27 +45,39 @@ describe("runtime connection config", () => {
   });
 
   it("tests local codex connectivity by invoking the configured binary", async () => {
-    vi.resetModules();
-    const spawnSync = vi.fn(() => ({ status: 0, stdout: Buffer.from("codex 1.0.0"), stderr: Buffer.from("") }));
-    vi.doMock("node:child_process", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("node:child_process")>();
-      return {
-        ...actual,
-        spawnSync,
-      };
-    });
+    const runner = vi.fn(() => ({
+      status: 0,
+      stdout: Buffer.from("codex 1.0.0"),
+      stderr: Buffer.from(""),
+    }));
+    const { testCodexBinary } = await import("./runtimeConfig");
 
-    const { testConnectionSettings } = await import("./runtimeConfig");
-
-    const result = await testConnectionSettings({
-      provider: "codex",
-      codex: {
-        bin: "codex",
-        model: "gpt-5.4-mini",
-        reasoningEffort: "low",
-      },
-    });
+    const result = testCodexBinary("codex", runner);
 
     expect(result.ok).toBe(true);
+    expect(runner).toHaveBeenCalledWith(
+      "codex",
+      ["--version"],
+      expect.objectContaining({
+        cwd: process.cwd(),
+        encoding: "utf8",
+      }),
+    );
+  });
+
+  it("falls back to a generic error when codex returns no stderr output", async () => {
+    const runner = vi.fn(() => ({
+      status: 1,
+      stdout: null,
+      stderr: null,
+    }));
+    const { testCodexBinary } = await import("./runtimeConfig");
+
+    const result = testCodexBinary("codex", runner);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Failed to execute codex.",
+    });
   });
 });

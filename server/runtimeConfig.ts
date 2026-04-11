@@ -59,6 +59,13 @@ export type ConnectionTestResult = {
   message: string;
 };
 
+type CodexRunner = (binary: string, args: string[], options: { cwd: string; encoding: "utf8" }) => {
+  status: number | null;
+  stdout: string | Buffer | null | undefined;
+  stderr: string | Buffer | null | undefined;
+  error?: Error;
+};
+
 const DEFAULT_CONNECTION_FILE = join(process.cwd(), "config", "providers.local.json");
 
 export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): ConnectionSettings {
@@ -154,17 +161,7 @@ export async function saveConnectionSettings(settings: ConnectionSettings, fileP
 export async function testConnectionSettings(input: ConnectionTestInput): Promise<ConnectionTestResult> {
   if (input.provider === "codex") {
     const binary = input.codex?.bin?.trim() || "codex";
-    const result = spawnSync(binary, ["--version"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-    });
-    if (result.status === 0) {
-      return { ok: true, message: result.stdout.trim() || "Codex CLI is available." };
-    }
-    return {
-      ok: false,
-      message: result.stderr.trim() || `Failed to execute ${binary}.`,
-    };
+    return testCodexBinary(binary);
   }
 
   const config = getRemoteConfig(input);
@@ -198,6 +195,25 @@ export function getConnectionSettingsFilePath() {
   return DEFAULT_CONNECTION_FILE;
 }
 
+export function testCodexBinary(binary: string, runner: CodexRunner = spawnSync as unknown as CodexRunner): ConnectionTestResult {
+  const result = runner(binary, ["--version"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  const stdout = normalizeProcessOutput(result.stdout);
+  const stderr = normalizeProcessOutput(result.stderr);
+  const errorMessage = result.error?.message?.trim() || "";
+
+  if (result.status === 0) {
+    return { ok: true, message: stdout || "Codex CLI is available." };
+  }
+
+  return {
+    ok: false,
+    message: stderr || errorMessage || `Failed to execute ${binary}.`,
+  };
+}
+
 export function buildConnectionLabel(settings: ConnectionSettings) {
   if (settings.activeProvider === "codex") {
     return `Local Codex · ${settings.codex.model} · ${settings.codex.reasoningEffort}`;
@@ -226,6 +242,16 @@ function normalizeReasoningEffort(raw: string | undefined | null): ReasoningEffo
     return raw;
   }
   return "low";
+}
+
+function normalizeProcessOutput(output: string | Buffer | null | undefined) {
+  if (typeof output === "string") {
+    return output.trim();
+  }
+  if (Buffer.isBuffer(output)) {
+    return output.toString("utf8").trim();
+  }
+  return "";
 }
 
 function getRemoteConfig(input: ConnectionTestInput) {

@@ -1,64 +1,94 @@
 # 知交文献阅读 / ZhiJiao Reader
 
+[English README](README_en.md)
+
 ![知交文献阅读截图](docs/screenshot.png)
 
-AI-powered paper reader for a two-pane workflow: PDF on the left, translation and Q&A on the right.
+知交文献阅读是一个本地优先的 AI 文献阅读工具：左侧阅读 PDF，右侧即时显示翻译、术语解释和同段追问卡片。它面向中文学术阅读场景，支持 DeepSeek、交大 API、OpenAI、本地 Codex，以及自定义 OpenAI-compatible 接口。
 
-## What It Is
+## 项目形态
 
-- Frontend: React + Vite
-- Backend: Express + Node.js
-- Desktop shell: Electron
-- PDF viewer: `@react-pdf-viewer/core`
-- Math rendering: `react-markdown` + `remark-math` + `rehype-katex`
-- AI backends: local Codex CLI, DeepSeek API, SJTU API, OpenAI API, custom OpenAI-compatible endpoints
+- 前端：React + Vite
+- 后端：Express + Node.js
+- 桌面壳：Electron
+- PDF 阅读：`@react-pdf-viewer/core`
+- 公式渲染：`react-markdown` + `remark-math` + `rehype-katex`
+- AI 后端：Local Codex CLI、DeepSeek API、SJTU API、OpenAI API、自定义兼容接口
 
-By default it runs as a local web app in your browser. The repository also includes an Electron shell for packaged desktop builds.
+默认运行方式是本地浏览器应用；仓库中也包含 Electron 打包配置，便于后续分发桌面版。
 
-## Prerequisites
+## 当前功能
+
+- 打开本地 PDF 文件
+- 同时打开多个 PDF，并用标签页切换
+- 在 PDF 中选取段落文本
+- 在右栏生成中文翻译卡片
+- 针对同一段落继续提问
+- 支持复制、重试、折叠卡片
+- 支持左右分栏阅读
+- 支持切换 DeepSeek、SJTU API、OpenAI、Local Codex、自定义接口
+- 在设置弹窗里测试连接后再保存配置
+- 支持公式 markdown / KaTeX 渲染
+
+## 环境要求
 
 - Node.js 20+
 - npm 10+
-- Optional: local `codex` CLI if you want to use `Local Codex`
+- 可选：如果要使用 `Local Codex`，需要本机已安装并可运行 `codex` CLI
 
-## Setup
-
-1. Copy `.env.example` to `.env`.
-2. `npm run launch` can start immediately even if no API is configured yet.
-3. Complete provider setup inside the app with the `Settings` button in the right panel.
-4. `npm run configure` is still available if you prefer terminal setup for the `.env` defaults.
-
-The real `.env` file stays local and is ignored by git. Only `.env.example` should be shared.
-Runtime connection settings are stored locally in `config/providers.local.json`, which is also ignored by git.
-
-## Run
+## 快速启动
 
 ```bash
 npm install
 npm run launch
 ```
 
-Development mode:
+开发模式：
 
 ```bash
 npm run dev
 ```
 
-## One-Click Start
+启动后：
 
-You can also use the packaged startup entry points:
+1. 如果本地没有 `.env`，程序会自动从 `.env.example` 生成。
+2. 如果还没有完成模型配置，右侧会提示进入 `Settings`。
+3. 所有真实密钥都只保存在本地，不会进入 git。
 
-- macOS: double-click `Launch ZhiJiao Reader.command`
-- Windows: double-click `Launch ZhiJiao Reader.bat`
-- Terminal:
+本地配置文件：
+
+- 环境变量模板：`.env.example`
+- 本地私有环境变量：`.env`
+- 运行时 provider 配置：`config/providers.local.json`
+
+其中 `.env` 和 `config/providers.local.json` 都已被 git 忽略。
+
+## 一行命令安装
+
+macOS / Linux：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.sh | bash
+```
+
+Windows PowerShell：
+
+```powershell
+irm https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.ps1 | iex
+```
+
+安装脚本会自动：
+
+- 检查 `git`、`node`、`npm`
+- 检查 Node.js 版本是否至少为 20
+- 克隆仓库到本地
+- 安装依赖
+- 启动应用并自动打开浏览器
+
+## 常用命令
 
 ```bash
 npm run launch
-```
-
-Useful helper commands:
-
-```bash
 npm run configure
 npm run check
 npm run release:zip
@@ -66,82 +96,42 @@ npm run electron:dev
 npm run electron:pack
 ```
 
-`npm run launch` will:
+说明：
 
-- create `.env` from `.env.example` if needed
-- check whether local `codex` is available
-- install dependencies if `node_modules` is missing
-- start the app and open the browser automatically
+- `npm run launch`：本地一键启动
+- `npm run configure`：在终端里预填 `.env` 默认项
+- `npm run check`：检查本地依赖与启动条件
+- `npm run release:zip`：从当前已提交的 git 状态生成源码压缩包
+- `npm run electron:dev`：Electron 开发模式
+- `npm run electron:pack`：打包 Electron 应用
 
-After launch, the app can open a connection settings dialog automatically when setup is still incomplete.
+默认地址：
 
-`npm run release:zip` will create a versioned `.zip` in `release/` from the current committed git state.
+- 前端：`http://localhost:5173`
+- 后端：`http://localhost:8787`
 
-GitHub publish helper docs:
+## 发布与使用方式
+
+仓库发布后，使用者有三种方式：
+
+1. 用一行命令安装并启动
+2. 直接克隆源码后运行 `npm run launch`
+3. 从 GitHub Releases 下载打包产物
+
+如果使用者选择 `Local Codex`，仍需要在自己的电脑上单独安装 Codex CLI；这部分不会跟随本项目一起分发。
+
+发布辅助文档：
 
 - [GitHub Distribution](docs/github-distribution.md)
 - [Electron Packaging](docs/electron-packaging.md)
 
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8787`
+## 当前限制
 
-## Current MVP
-
-- Upload a local PDF
-- Open multiple local PDFs with tabs
-- Select a passage in the PDF
-- Translate the passage into Chinese
-- Ask follow-up questions in a card scoped to that passage
-- Copy or retry responses
-- Resize the split panes
-- Switch backend provider between OpenAI, DeepSeek, and local Codex CLI
-- Use SJTU's OpenAI-compatible API endpoint
-- Use a custom OpenAI-compatible API endpoint with base URL, model name, and API key
-- Test provider connectivity from the in-app settings dialog before saving
-- Run as an Electron desktop shell during development
-
-## Known limits
-
-- Scanned image PDFs are not supported
-- Refreshing the page clears cards
-- OpenAI mode needs a valid `OPENAI_API_KEY`
-- DeepSeek mode needs a valid `DEEPSEEK_API_KEY`
-- Codex mode depends on a working local `codex` CLI session
-- Custom API mode expects an OpenAI-compatible `/v1` endpoint
-- Local Codex is still not true token-by-token streaming; the app simulates a more readable progressive reveal on the frontend
-- Electron packaging is present, but signing and notarization are not configured yet
-
-## GitHub Quick Start
-
-Once the repository is published, users can either:
-
-1. Install and launch with one command:
-
-macOS / Linux:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.sh | bash
-```
-
-Windows PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.ps1 | iex
-```
-
-The installer checks `git`, `node`, `npm`, and requires Node.js 20+ before it clones and launches the app.
-
-2. Clone and launch from source:
-
-```bash
-git clone https://github.com/Yang-wentao/zhijiao-reader.git
-cd zhijiao-reader
-npm run launch
-```
-
-3. Download a packaged build from GitHub Releases:
-   - macOS: unsigned `.zip`
-   - Windows: `.zip`
-   - Linux: `.AppImage`
-
-Users who want `Local Codex` still need to install the Codex CLI separately on their own machine.
+- 暂不支持扫描版图片 PDF
+- 页面刷新后，右栏卡片不会持久化
+- OpenAI 模式需要有效的 `OPENAI_API_KEY`
+- DeepSeek 模式需要有效的 `DEEPSEEK_API_KEY`
+- SJTU API 模式需要有效的交大 API key
+- 自定义接口需要兼容 OpenAI `/v1` 风格
+- Local Codex 目前不是真正的 token 级流式返回，而是前端渐进显示
+- Electron 打包已接入，但签名与 notarization 还未配置
