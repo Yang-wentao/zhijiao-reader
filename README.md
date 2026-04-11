@@ -1,5 +1,7 @@
 # 知交文献阅读 / ZhiJiao Reader
 
+![知交文献阅读截图](docs/screenshot.png)
+
 AI-powered paper reader for a two-pane workflow: PDF on the left, translation and Q&A on the right.
 
 ## What It Is

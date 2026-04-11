@@ -1,0 +1,119 @@
+<svg width="1600" height="960" viewBox="0 0 1600 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF2FA"/>
+      <stop offset="0.5" stop-color="#F7F1E6"/>
+      <stop offset="1" stop-color="#EFF4FB"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#FFFEFB"/>
+      <stop offset="1" stop-color="#F9F7F1"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#102347" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="960" fill="url(#bg)"/>
+
+  <rect x="24" y="20" width="1552" height="920" rx="26" fill="#FBF8F1" stroke="#E8E0D3"/>
+  <rect x="24" y="20" width="1552" height="62" rx="26" fill="#FCFBF8"/>
+  <rect x="70" y="37" width="18" height="18" rx="9" fill="#F05A5A"/>
+  <rect x="98" y="37" width="18" height="18" rx="9" fill="#F4BC45"/>
+  <rect x="126" y="37" width="18" height="18" rx="9" fill="#52C15C"/>
+
+  <rect x="60" y="116" width="980" height="780" rx="28" fill="#FEFCF7" stroke="#E7DFD4"/>
+  <rect x="1056" y="116" width="492" height="780" rx="28" fill="#FCF9F3" stroke="#E7DFD4"/>
+
+  <rect x="72" y="130" width="136" height="52" rx="24" fill="#223C73"/>
+  <text x="140" y="163" text-anchor="middle" fill="#FFFFFF" font-size="20" font-family="Georgia, 'Times New Roman', serif">Open PDF</text>
+
+  <rect x="226" y="130" width="228" height="52" rx="24" fill="#E8EDF5"/>
+  <text x="255" y="163" fill="#243B70" font-size="18" font-family="Georgia, 'Times New Roman', serif">Hu 1998 mu cankao.pdf</text>
+  <text x="430" y="163" fill="#243B70" font-size="22" font-family="Georgia, 'Times New Roman', serif">×</text>
+
+  <text x="612" y="164" fill="#445579" font-size="18" font-family="Georgia, 'Times New Roman', serif">Hu 1998 mu cankao.pdf</text>
+  <rect x="874" y="130" width="58" height="52" rx="24" fill="#E9EDF5"/>
+  <rect x="942" y="130" width="108" height="52" rx="24" fill="#E9EDF5"/>
+  <rect x="1060" y="130" width="58" height="52" rx="24" fill="#E9EDF5"/>
+  <text x="903" y="163" text-anchor="middle" fill="#243B70" font-size="18" font-family="Georgia, 'Times New Roman', serif">A-</text>
+  <text x="996" y="163" text-anchor="middle" fill="#243B70" font-size="18" font-family="Georgia, 'Times New Roman', serif">Fit width</text>
+  <text x="1089" y="163" text-anchor="middle" fill="#243B70" font-size="18" font-family="Georgia, 'Times New Roman', serif">A+</text>
+
+  <rect x="100" y="220" width="900" height="620" rx="6" fill="url(#paper)" stroke="#E0D6C6" filter="url(#shadow)"/>
+  <text x="498" y="284" text-anchor="middle" fill="#262626" font-size="24" font-family="Georgia, 'Times New Roman', serif" font-weight="700">Miscellanea</text>
+  <text x="870" y="284" fill="#262626" font-size="24" font-family="Georgia, 'Times New Roman', serif" font-weight="700">497</text>
+
+  <g font-family="Georgia, 'Times New Roman', serif" fill="#202020" font-size="16">
+    <text x="135" y="338">prior probability measure μ with support Θ, a subset of Rᵖ. Let design levels x be chosen from X,</text>
+    <text x="135" y="366">a subset of Rᑫ. Let Q be the probability measure induced by random errors {εᵢ}. Consider the</text>
+    <text x="135" y="394">following condition.</text>
+    <text x="155" y="450" font-style="italic">Theorem 1.</text>
+    <text x="270" y="450" font-style="italic">Suppose that, in model (1), the design levels and the random errors satisfy (2)</text>
+    <text x="135" y="478" font-style="italic">and (3), respectively. Assume that the regression function r(x, θ) is bounded and continuous</text>
+    <text x="135" y="506" font-style="italic">in an open set of Rᵖ⁺ᑫ containing X × Θ. Let L be the set of limit points of the sequence {xₙ};</text>
+    <text x="135" y="534" font-style="italic">note that L is a random set that depends on the realisation of {xₙ}.</text>
+    <text x="155" y="598" font-style="italic">Corollary 1.</text>
+    <text x="288" y="598" font-style="italic">Let {xₙ}, {εₙ} and r(x, θ) be as in Theorem 1. Then for any x ∈ L the limiting</text>
+    <text x="135" y="626" font-style="italic">posterior distribution of r(x, θ) is a point mass.</text>
+    <text x="155" y="690" font-style="italic">Remark 1.</text>
+    <text x="270" y="690">A set S satisfies Condition D if and only if the values of r(x, θ), x∈S, uniquely</text>
+    <text x="135" y="718">determine θ. The fact that L is the set of limit points of {xₙ} means that the sequence {xₙ}</text>
+    <text x="135" y="746">needs to “fill” a set satisfying Condition D infinitely often in order to estimate θ consistently.</text>
+  </g>
+
+  <rect x="126" y="420" width="780" height="128" rx="6" fill="#DDE4FF" fill-opacity="0.72"/>
+  <rect x="126" y="568" width="740" height="74" rx="6" fill="#DDE4FF" fill-opacity="0.72"/>
+  <rect x="126" y="662" width="690" height="88" rx="6" fill="#DDE4FF" fill-opacity="0.72"/>
+
+  <text x="1088" y="160" fill="#94693A" font-size="14" font-family="Georgia, 'Times New Roman', serif" letter-spacing="2">AI READING COPILOT</text>
+  <text x="1088" y="205" fill="#1F2430" font-size="32" font-family="'Helvetica Neue', Arial, sans-serif" font-weight="700">知交文献阅读</text>
+
+  <rect x="1088" y="130" width="170" height="40" rx="20" fill="#F1EFE9"/>
+  <text x="1110" y="156" fill="#6C727D" font-size="14" font-family="'Helvetica Neue', Arial, sans-serif">Current</text>
+  <text x="1176" y="156" fill="#1F2430" font-size="15" font-family="'Helvetica Neue', Arial, sans-serif" font-weight="700">deepseek-chat</text>
+  <text x="1282" y="156" fill="#687086" font-size="14" font-family="Georgia, 'Times New Roman', serif">DeepSeek</text>
+
+  <rect x="1380" y="130" width="132" height="40" rx="20" fill="#F1EFE9"/>
+  <text x="1446" y="156" text-anchor="middle" fill="#243B70" font-size="16" font-family="Georgia, 'Times New Roman', serif">Settings</text>
+
+  <text x="1088" y="190" fill="#55627A" font-size="14" font-family="Georgia, 'Times New Roman', serif">DeepSeek · deepseek-chat</text>
+
+  <rect x="1082" y="226" width="472" height="636" rx="24" fill="#FFFDFC" stroke="#E9E2D8"/>
+  <text x="1116" y="274" fill="#9A6C3F" font-size="14" font-family="Georgia, 'Times New Roman', serif" letter-spacing="2">TRANSLATE</text>
+  <text x="1460" y="274" fill="#243B70" font-size="16" font-family="Georgia, 'Times New Roman', serif">Collapse</text>
+  <text x="1522" y="274" fill="#243B70" font-size="16" font-family="Georgia, 'Times New Roman', serif">Close</text>
+
+  <g font-family="Georgia, 'Times New Roman', serif" fill="#33496E" font-size="16">
+    <text x="1120" y="322">Theorem 1. Suppose that, in model (1), the design levels and the</text>
+    <text x="1120" y="350">random errors satisfy (2) and (3), respectively. Assume that the</text>
+    <text x="1120" y="378">regression function r(x, θ) is bounded and continuous in an open</text>
+    <text x="1120" y="406">set of Rᵖ⁺ᑫ containing X × Θ. Let L be the set of limit points</text>
+    <text x="1120" y="434">of the sequence {xₙ}; note that L is a random set that depends on</text>
+    <text x="1120" y="462">the realisation of {xₙ}.</text>
+  </g>
+
+  <rect x="1120" y="496" width="120" height="44" rx="22" fill="#EEF1F6"/>
+  <rect x="1410" y="496" width="120" height="44" rx="22" fill="#EEF1F6"/>
+  <text x="1180" y="523" text-anchor="middle" fill="#243B70" font-size="16" font-family="Georgia, 'Times New Roman', serif">Copy</text>
+  <text x="1470" y="523" text-anchor="middle" fill="#243B70" font-size="16" font-family="Georgia, 'Times New Roman', serif">Retry</text>
+
+  <rect x="1120" y="564" width="400" height="12" rx="6" fill="#E6DED0"/>
+  <rect x="1120" y="564" width="132" height="12" rx="6" fill="#C7A56B"/>
+  <rect x="1408" y="546" width="124" height="34" rx="17" fill="#EEF1F6"/>
+  <text x="1470" y="568" text-anchor="middle" fill="#243B70" font-size="14" font-family="'Helvetica Neue', Arial, sans-serif">Streaming response</text>
+
+  <rect x="1120" y="592" width="410" height="206" rx="24" fill="#F4EFE7"/>
+  <text x="1150" y="628" fill="#9A6C3F" font-size="14" font-family="Georgia, 'Times New Roman', serif" letter-spacing="2">ASSISTANT</text>
+  <g font-family="'PingFang SC', 'Noto Sans CJK SC', sans-serif" fill="#263140" font-size="16">
+    <text x="1150" y="670">定理 1. 假设在模型 (1) 中，设计水平和随机误差分别满足条件 (2) 和</text>
+    <text x="1150" y="700">(3)。假定回归函数 r(x, θ) 在包含 X × Θ 的开集内有界且连续。</text>
+    <text x="1150" y="730">令 L 为序列 {xₙ} 的极限点集；注意 L 是一个依赖于 {xₙ}</text>
+    <text x="1150" y="760">实现情况的随机集合。则贝叶斯估计量在事件 A 上是强相合的。</text>
+  </g>
+
+  <rect x="1120" y="822" width="165" height="42" rx="21" fill="#EEF1F6"/>
+  <rect x="1294" y="822" width="198" height="42" rx="21" fill="#EEF1F6"/>
+  <text x="1202" y="848" text-anchor="middle" fill="#51617E" font-size="15" font-family="'PingFang SC', 'Noto Sans CJK SC', sans-serif">这段在说什么？</text>
+  <text x="1393" y="848" text-anchor="middle" fill="#51617E" font-size="15" font-family="'PingFang SC', 'Noto Sans CJK SC', sans-serif">这段的核心结论是什么？</text>
+</svg>
