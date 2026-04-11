@@ -1,5 +1,12 @@
 [
   {
+    "file": "zhijiao-reader-5ff8fbc-20260412-012959.zip",
+    "commit": "5ff8fbcce0203b51684ac15b3f608dd1c925ad5f",
+    "shortCommit": "5ff8fbc",
+    "subject": "chore: rename project to zhijiao reader",
+    "createdAt": "2026-04-11T17:29:59.774Z"
+  },
+  {
     "file": "codex-paper-reader-148967d-20260412-012027.zip",
     "commit": "148967df369930642ae035da56f299e5105241f3",
     "shortCommit": "148967d",
