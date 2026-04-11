@@ -113,15 +113,31 @@ GitHub publish helper docs:
 
 Once the repository is published, users can either:
 
-1. Clone and launch from source:
+1. Install and launch with one command:
+
+macOS / Linux:
 
 ```bash
-git clone https://github.com/<owner>/zhijiao-reader.git
+curl -fsSL https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.ps1 | iex
+```
+
+The installer checks `git`, `node`, `npm`, and requires Node.js 20+ before it clones and launches the app.
+
+2. Clone and launch from source:
+
+```bash
+git clone https://github.com/Yang-wentao/zhijiao-reader.git
 cd zhijiao-reader
 npm run launch
 ```
 
-2. Download a packaged build from GitHub Releases:
+3. Download a packaged build from GitHub Releases:
    - macOS: unsigned `.zip`
    - Windows: `.zip`
    - Linux: `.AppImage`

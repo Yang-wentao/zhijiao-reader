@@ -7,17 +7,17 @@ Let another user clone, install, and launch the reader with one command, then fi
 ## Recommended publish path
 
 1. Push this repository to GitHub.
-2. Set the real repository URL in the installer commands, or export `REPO_URL` before running them.
+2. The installer scripts already target the public repository by default, and still allow overriding `REPO_URL` if needed.
 3. Tell macOS/Linux users to run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<owner>/zhijiao-reader/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.sh | bash
 ```
 
 4. Tell Windows users to run:
 
 ```powershell
-irm https://raw.githubusercontent.com/<owner>/zhijiao-reader/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.ps1 | iex
 ```
 
 ## Why this packaging works
@@ -30,9 +30,7 @@ irm https://raw.githubusercontent.com/<owner>/zhijiao-reader/main/install.ps1 | 
 
 1. Confirm `README.md` describes both source launch and GitHub Releases usage.
 2. Make sure no real API keys are present in `.env`, `.env.example`, installer scripts, or tracked config files.
-3. Create a GitHub repository and either:
-   - replace the placeholder `REPO_URL` default in [install.sh](../install.sh) and [install.ps1](../install.ps1), or
-   - keep the scripts generic and document that users can set `REPO_URL` explicitly.
+3. Create the GitHub repository at `Yang-wentao/zhijiao-reader`, or override `REPO_URL` if you publish from a different owner or fork.
 4. Push a tag such as `v0.1.0` to trigger the release workflow.
 
 ## Distribution recommendation
