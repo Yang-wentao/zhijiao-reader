@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import type { ResponseStreamEvent } from "openai/resources/responses/responses";
-import { buildAskMessages, buildTranslationMessages } from "../prompts";
-import type { AIProvider, AskInput, ChatMessage, TranslationInput } from "./types";
+import { buildAskMessages, buildTranslationMessages } from "../prompts.js";
+import type { AIProvider, AskInput, ChatMessage, TranslationInput } from "./types.js";
 
 type ProviderOptions = {
   apiKey: string;

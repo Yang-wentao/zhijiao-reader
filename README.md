@@ -47,6 +47,8 @@ Useful helper commands:
 npm run configure
 npm run check
 npm run release:zip
+npm run electron:dev
+npm run electron:pack
 ```
 
 `npm run launch` will:
@@ -59,6 +61,11 @@ npm run release:zip
 After launch, the app can open a connection settings dialog automatically when setup is still incomplete.
 
 `npm run release:zip` will create a versioned `.zip` in [`release/`](/Users/yangwentao/Documents/软件开发尝试/release) from the current committed git state.
+
+GitHub publish helper docs:
+
+- [GitHub Distribution](/Users/yangwentao/Documents/软件开发尝试/docs/github-distribution.md)
+- [Electron Packaging](/Users/yangwentao/Documents/软件开发尝试/docs/electron-packaging.md)
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8787`
@@ -75,6 +82,7 @@ After launch, the app can open a connection settings dialog automatically when s
 - Switch backend provider between OpenAI, DeepSeek, and local Codex CLI
 - Use a custom OpenAI-compatible API endpoint with base URL, model name, and API key
 - Test provider connectivity from the in-app settings dialog before saving
+- Run as an Electron desktop shell during development
 
 ## Known limits
 
@@ -85,3 +93,4 @@ After launch, the app can open a connection settings dialog automatically when s
 - Codex mode depends on a working local `codex` CLI session
 - Custom API mode expects an OpenAI-compatible `/v1` endpoint
 - Local Codex is still not true token-by-token streaming; the app simulates a more readable progressive reveal on the frontend
+- Electron packaging is present, but signing and notarization are not configured yet

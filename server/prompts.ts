@@ -1,4 +1,4 @@
-import type { ChatMessage } from "./providers/types";
+import type { ChatMessage } from "./providers/types.js";
 
 export const TRANSLATE_SYSTEM_PROMPT = [
   "You are an academic translation assistant.",

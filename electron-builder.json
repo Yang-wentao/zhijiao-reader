@@ -1,0 +1,25 @@
+{
+  "appId": "com.yangwentao.codexpaperreader",
+  "productName": "Codex Paper Reader",
+  "directories": {
+    "output": "release/electron"
+  },
+  "files": [
+    "electron/**/*",
+    "dist/**/*",
+    "build/server/**/*",
+    "package.json"
+  ],
+  "extraMetadata": {
+    "main": "electron/main.mjs"
+  },
+  "mac": {
+    "target": ["zip"]
+  },
+  "win": {
+    "target": ["zip"]
+  },
+  "linux": {
+    "target": ["AppImage"]
+  }
+}

@@ -1,4 +1,4 @@
-import type { AskInput, TranslationInput } from "./types";
+import type { AskInput, TranslationInput } from "./types.js";
 
 export function buildCodexTranslationPrompt(input: TranslationInput) {
   return [

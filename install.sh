@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="${APP_DIR:-$HOME/codex-paper-reader}"
+REPO_URL="${REPO_URL:-https://github.com/YOUR_GITHUB_NAME/codex-paper-reader.git}"
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "git is required."
+  exit 1
+fi
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm is required. Install Node.js 20+ first."
+  exit 1
+fi
+
+if [ -d "$APP_DIR/.git" ]; then
+  git -C "$APP_DIR" pull --ff-only
+else
+  git clone "$REPO_URL" "$APP_DIR"
+fi
+
+cd "$APP_DIR"
+npm install
+npm run launch

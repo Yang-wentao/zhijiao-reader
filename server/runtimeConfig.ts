@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import OpenAI from "openai";
-import type { ReasoningEffort } from "./config";
+import type { ReasoningEffort } from "./config.js";
 
 export type ProviderName = "openai" | "codex" | "deepseek" | "custom";
 

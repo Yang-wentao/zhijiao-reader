@@ -1,5 +1,12 @@
 [
   {
+    "file": "codex-paper-reader-dc95d53-20260411-215251.zip",
+    "commit": "dc95d53d55cbef89ede5500748cdc300188e7db4",
+    "shortCommit": "dc95d53",
+    "subject": "feat: add runtime connection settings",
+    "createdAt": "2026-04-11T13:52:51.144Z"
+  },
+  {
     "file": "codex-paper-reader-e611721-20260411-194051.zip",
     "commit": "e611721a2cb2a2b54bf1636c820a389724f1ede2",
     "shortCommit": "e611721",

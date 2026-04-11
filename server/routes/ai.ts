@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
-import type { ProviderName } from "../config";
-import type { AIProvider, AskInput, TranslationInput } from "../providers/types";
-import type { ConnectionSettings, ConnectionTestInput, ConnectionTestResult } from "../runtimeConfig";
+import type { ProviderName } from "../config.js";
+import type { AIProvider, AskInput, TranslationInput } from "../providers/types.js";
+import type { ConnectionSettings, ConnectionTestInput, ConnectionTestResult } from "../runtimeConfig.js";
 
 type RouteOptions = {
   getProvider: () => AIProvider;

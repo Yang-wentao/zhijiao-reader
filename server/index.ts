@@ -2,13 +2,17 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import { spawnSync } from "node:child_process";
-import { type ReasoningEffort } from "./config";
-import { CodexProvider } from "./providers/codexProvider";
-import { CustomProvider } from "./providers/customProvider";
-import { DeepSeekProvider } from "./providers/deepseekProvider";
-import { OpenAIProvider } from "./providers/openaiProvider";
-import type { AIProvider } from "./providers/types";
-import { createAIRouter } from "./routes/ai";
+import { existsSync } from "node:fs";
+import { createServer, type Server } from "node:http";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { type ReasoningEffort } from "./config.js";
+import { CodexProvider } from "./providers/codexProvider.js";
+import { CustomProvider } from "./providers/customProvider.js";
+import { DeepSeekProvider } from "./providers/deepseekProvider.js";
+import { OpenAIProvider } from "./providers/openaiProvider.js";
+import type { AIProvider } from "./providers/types.js";
+import { createAIRouter } from "./routes/ai.js";
 import {
   buildConnectionLabel,
   buildDefaultConnectionSettings,
@@ -17,16 +21,7 @@ import {
   testConnectionSettings,
   type ConnectionSettings,
   type ProviderName,
-} from "./runtimeConfig";
-
-const app = express();
-
-app.use(cors());
-app.use(express.json({ limit: "1mb" }));
-
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
-});
+} from "./runtimeConfig.js";
 
 type ProviderRuntime = {
   provider: AIProvider;
@@ -48,7 +43,118 @@ type RuntimeState = {
   activeProviderName: ProviderName;
 };
 
-void bootstrap();
+type StartServerOptions = {
+  port?: number;
+  staticDir?: string | null;
+};
+
+export type StartedServer = {
+  app: express.Express;
+  server: Server;
+  port: number;
+  close: () => Promise<void>;
+};
+
+export async function startServer(options: StartServerOptions = {}): Promise<StartedServer> {
+  const app = express();
+  const state = await initializeRuntimeState();
+  const port = options.port ?? Number(process.env.PORT ?? 8787);
+
+  app.use(cors());
+  app.use(express.json({ limit: "1mb" }));
+
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true });
+  });
+
+  app.use(
+    "/api",
+    createAIRouter({
+      getProvider: () => getActiveRuntime(state).provider,
+      getProviderName: () => state.activeProviderName,
+      getProviderOptions: () => ["codex", "deepseek", "openai", "custom"],
+      getCanSwitchProviders: () => true,
+      getIsReady: () => getActiveRuntime(state).isReady,
+      getModel: () => getActiveRuntime(state).model,
+      getModelOptions: () => getActiveRuntime(state).modelOptions,
+      getCanSwitchModels: () => getActiveRuntime(state).canSwitchModels,
+      getReasoningEffort: () => getActiveRuntime(state).reasoningEffort,
+      getReasoningEffortOptions: () => getActiveRuntime(state).reasoningEffortOptions,
+      getCanSwitchReasoningEffort: () => getActiveRuntime(state).canSwitchReasoningEffort,
+      getSetupRequired: () => buildAppConfig(state).setupRequired,
+      getConnectionLabel: () => buildConnectionLabel(state.settings),
+      getConnectionSettings: () => state.settings,
+      saveConnectionSettings: async (settings) => {
+        state.settings = settings;
+        state.runtimes = createProviderRuntimeMap(settings);
+        state.activeProviderName = settings.activeProvider;
+        state.setupRequired = false;
+        await persistConnectionSettings(settings);
+      },
+      testConnectionSettings,
+      setProvider: (providerName) => {
+        state.activeProviderName = providerName;
+        state.settings.activeProvider = providerName;
+      },
+      setModel: (model) => {
+        const runtime = getActiveRuntime(state);
+        runtime.setModel?.(model);
+        if (state.activeProviderName === "codex") {
+          state.settings.codex.model = model;
+        } else if (state.activeProviderName === "deepseek") {
+          state.settings.deepseek.model = model;
+        } else if (state.activeProviderName === "custom") {
+          state.settings.custom.model = model;
+        } else {
+          state.settings.openai.model = model;
+        }
+      },
+      setReasoningEffort: (reasoningEffort) => {
+        getActiveRuntime(state).setReasoningEffort?.(reasoningEffort);
+        if (state.activeProviderName === "codex") {
+          state.settings.codex.reasoningEffort = reasoningEffort;
+        }
+      },
+    }),
+  );
+
+  if (options.staticDir) {
+    const resolvedStaticDir = resolve(options.staticDir);
+    if (existsSync(resolvedStaticDir)) {
+      app.use(express.static(resolvedStaticDir));
+      app.get("*", (req, res, next) => {
+        if (req.path.startsWith("/api")) {
+          next();
+          return;
+        }
+        res.sendFile(resolve(resolvedStaticDir, "index.html"));
+      });
+    }
+  }
+
+  const server = createServer(app);
+  await new Promise<void>((resolvePromise) => {
+    server.listen(port, "127.0.0.1", () => {
+      resolvePromise();
+    });
+  });
+
+  return {
+    app,
+    server,
+    port,
+    close: () =>
+      new Promise<void>((resolvePromise, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolvePromise();
+        });
+      }),
+  };
+}
 
 function createUnavailableProvider(message: string): AIProvider {
   return {
@@ -156,73 +262,6 @@ async function initializeRuntimeState(): Promise<RuntimeState> {
   };
 }
 
-function testCodexBinary(binary: string) {
-  const result = spawnSync(binary, ["--version"], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-  });
-  return result.status === 0;
-}
-
-async function bootstrap() {
-  const state: RuntimeState = await initializeRuntimeState();
-
-  app.use(
-    "/api",
-    createAIRouter({
-      getProvider: () => getActiveRuntime(state).provider,
-      getProviderName: () => state.activeProviderName,
-      getProviderOptions: () => ["codex", "deepseek", "openai", "custom"],
-      getCanSwitchProviders: () => true,
-      getIsReady: () => getActiveRuntime(state).isReady,
-      getModel: () => getActiveRuntime(state).model,
-      getModelOptions: () => getActiveRuntime(state).modelOptions,
-      getCanSwitchModels: () => getActiveRuntime(state).canSwitchModels,
-      getReasoningEffort: () => getActiveRuntime(state).reasoningEffort,
-      getReasoningEffortOptions: () => getActiveRuntime(state).reasoningEffortOptions,
-      getCanSwitchReasoningEffort: () => getActiveRuntime(state).canSwitchReasoningEffort,
-      getSetupRequired: () => buildAppConfig(state).setupRequired,
-      getConnectionLabel: () => buildConnectionLabel(state.settings),
-      getConnectionSettings: () => state.settings,
-      saveConnectionSettings: async (settings) => {
-        state.settings = settings;
-        state.runtimes = createProviderRuntimeMap(settings);
-        state.activeProviderName = settings.activeProvider;
-        state.setupRequired = false;
-        await persistConnectionSettings(settings);
-      },
-      testConnectionSettings,
-      setProvider: (providerName) => {
-        state.activeProviderName = providerName;
-        state.settings.activeProvider = providerName;
-      },
-      setModel: (model) => {
-        const runtime = getActiveRuntime(state);
-        runtime.setModel?.(model);
-        if (state.activeProviderName === "codex") {
-          state.settings.codex.model = model;
-        } else if (state.activeProviderName === "deepseek") {
-          state.settings.deepseek.model = model;
-        } else if (state.activeProviderName === "custom") {
-          state.settings.custom.model = model;
-        } else {
-          state.settings.openai.model = model;
-        }
-      },
-      setReasoningEffort: (reasoningEffort) => {
-        getActiveRuntime(state).setReasoningEffort?.(reasoningEffort);
-        if (state.activeProviderName === "codex") {
-          state.settings.codex.reasoningEffort = reasoningEffort;
-        }
-      },
-    }),
-  );
-
-  app.listen(Number(process.env.PORT ?? 8787), () => {
-    console.log(`Server listening on http://localhost:${process.env.PORT ?? 8787}`);
-  });
-}
-
 function getActiveRuntime(state: RuntimeState) {
   return state.runtimes[state.activeProviderName];
 }
@@ -246,4 +285,24 @@ function buildAppConfig(state: RuntimeState) {
     setupRequired: state.setupRequired || !runtime.isReady,
     connectionLabel: buildConnectionLabel(state.settings),
   };
+}
+
+function testCodexBinary(binary: string) {
+  const result = spawnSync(binary, ["--version"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  return result.status === 0;
+}
+
+function isDirectExecution() {
+  const currentFile = fileURLToPath(import.meta.url);
+  const entryFile = process.argv[1] ? resolve(process.argv[1]) : "";
+  return currentFile === entryFile;
+}
+
+if (isDirectExecution()) {
+  void startServer().then(({ port }) => {
+    console.log(`Server listening on http://127.0.0.1:${port}`);
+  });
 }

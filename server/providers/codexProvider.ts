@@ -2,9 +2,9 @@ import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { ReasoningEffort } from "../config";
-import { buildCodexAskPrompt, buildCodexTranslationPrompt } from "./codexPrompts";
-import type { AIProvider, AskInput, TranslationInput } from "./types";
+import type { ReasoningEffort } from "../config.js";
+import { buildCodexAskPrompt, buildCodexTranslationPrompt } from "./codexPrompts.js";
+import type { AIProvider, AskInput, TranslationInput } from "./types.js";
 
 type CodexProviderOptions = {
   codexBin: string;
