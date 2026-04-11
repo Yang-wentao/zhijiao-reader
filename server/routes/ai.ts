@@ -175,7 +175,7 @@ function buildConfigResponse(options: RouteOptions) {
     reasoningEffort: options.getReasoningEffort(),
     reasoningEffortOptions: options.getReasoningEffortOptions(),
     canSwitchReasoningEffort: options.getCanSwitchReasoningEffort(),
-    questionActionLabel: "Ask Codex",
+    questionActionLabel: "Ask ZhiJiao",
     maxSelectionChars: MAX_SELECTION_CHARS,
     setupRequired: options.getSetupRequired(),
     connectionLabel: options.getConnectionLabel(),

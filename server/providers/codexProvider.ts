@@ -39,7 +39,7 @@ export class CodexProvider implements AIProvider {
   private async runPrompt(prompt: string): Promise<AsyncIterable<string>> {
     const outputFile = path.join(
       os.tmpdir(),
-      `codex-paper-reader-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`,
+      `zhijiao-reader-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`,
     );
 
     try {

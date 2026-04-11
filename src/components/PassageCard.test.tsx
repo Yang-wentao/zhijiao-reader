@@ -39,7 +39,7 @@ describe("PassageCard", () => {
     render(
       <PassageCard
         card={card}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}
@@ -62,7 +62,7 @@ describe("PassageCard", () => {
     render(
       <PassageCard
         card={card}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}
@@ -81,7 +81,7 @@ describe("PassageCard", () => {
     render(
       <PassageCard
         card={buildCard({ selectionText })}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}
@@ -113,7 +113,7 @@ describe("PassageCard", () => {
             },
           ],
         })}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}
@@ -147,7 +147,7 @@ describe("PassageCard", () => {
             },
           ],
         })}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}
@@ -165,7 +165,7 @@ describe("PassageCard", () => {
     render(
       <PassageCard
         card={buildCard({ status: "loading" })}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}
@@ -191,7 +191,7 @@ describe("PassageCard", () => {
     const { container } = render(
       <PassageCard
         card={card}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}
@@ -217,7 +217,7 @@ describe("PassageCard", () => {
     const { container } = render(
       <PassageCard
         card={card}
-        questionActionLabel="Ask Codex"
+        questionActionLabel="Ask ZhiJiao"
         onAsk={() => undefined}
         onDismiss={() => undefined}
         onToggle={() => undefined}

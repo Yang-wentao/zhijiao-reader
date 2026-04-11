@@ -37,7 +37,7 @@ export function AssistantPanel({
       <header className="assistant-header">
         <div className="assistant-summary-row assistant-summary-row-compact">
           <div className="assistant-title-group">
-            <h1>Codex Panel</h1>
+            <h1>知交文献阅读</h1>
           </div>
           <div className="assistant-header-actions">
             <div className="model-chip-row model-chip-row-compact" aria-label="Current connection">

@@ -15,7 +15,7 @@ const shortCommit = await git(["rev-parse", "--short", "HEAD"]);
 const fullCommit = await git(["rev-parse", "HEAD"]);
 const subject = await git(["log", "-1", "--pretty=%s"]);
 const timestamp = createTimestamp();
-const fileName = `codex-paper-reader-${shortCommit}-${timestamp}.zip`;
+const fileName = `zhijiao-reader-${shortCommit}-${timestamp}.zip`;
 const outputPath = join(releaseDir, fileName);
 
 await execFileAsync("git", ["archive", "--format=zip", "--output", outputPath, "HEAD"], {

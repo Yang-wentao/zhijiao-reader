@@ -27,7 +27,7 @@ const DEFAULT_CONFIG: AppConfig = {
   reasoningEffort: null,
   reasoningEffortOptions: [],
   canSwitchReasoningEffort: false,
-  questionActionLabel: "Ask Codex",
+  questionActionLabel: "Ask ZhiJiao",
   maxSelectionChars: 8000,
   setupRequired: false,
   connectionLabel: "Not connected",

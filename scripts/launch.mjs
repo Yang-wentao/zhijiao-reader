@@ -200,7 +200,7 @@ async function runCommand(command, commandArgs, label) {
 }
 
 function printSummary(env) {
-  console.log("\nCodex Paper Reader");
+  console.log("\n知交文献阅读 / ZhiJiao Reader");
   console.log(`- Provider: ${env.AI_PROVIDER}`);
   if (env.AI_PROVIDER === "codex") {
     console.log(`- Codex CLI: ${isCodexAvailable(env.CODEX_BIN || "codex") ? "detected" : "missing"}`);

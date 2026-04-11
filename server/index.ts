@@ -300,7 +300,7 @@ function buildAppConfig(state: RuntimeState) {
     reasoningEffort: runtime.reasoningEffort,
     reasoningEffortOptions: runtime.reasoningEffortOptions,
     canSwitchReasoningEffort: runtime.canSwitchReasoningEffort,
-    questionActionLabel: "Ask Codex",
+    questionActionLabel: "Ask ZhiJiao",
     maxSelectionChars: 8000,
     setupRequired: state.setupRequired || !runtime.isReady,
     connectionLabel: buildConnectionLabel(state.settings),

@@ -20,7 +20,7 @@ function createMainWindow() {
     height: 1040,
     minWidth: 1180,
     minHeight: 760,
-    title: "Codex Paper Reader",
+    title: "知交文献阅读",
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, "preload.mjs"),

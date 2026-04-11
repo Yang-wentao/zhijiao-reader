@@ -1,4 +1,4 @@
-# Codex Paper Reader Design
+# ZhiJiao Reader Design
 
 Date: 2026-04-10
 Status: Draft approved in conversation, pending user review
@@ -24,7 +24,7 @@ This is not a full Zhiyun clone. It is a narrower MVP optimized for fast reading
 - Show a small action bar after selection.
 - Support two primary actions:
   - `Translate`: translate the selected passage into Chinese.
-  - `Ask Codex`: ask questions about the selected passage.
+  - `Ask ZhiJiao`: ask questions about the selected passage.
 - Show the result in the right assistant pane.
 - Support follow-up questions within the current passage context.
 - Run as a local web app.
@@ -50,7 +50,7 @@ This is not a full Zhiyun clone. It is a narrower MVP optimized for fast reading
 3. Left pane renders the PDF and supports normal reading.
 4. User manually selects a passage.
 5. A minimal floating toolbar appears near the selection.
-6. User clicks either `Translate` or `Ask Codex`.
+6. User clicks either `Translate` or `Ask ZhiJiao`.
 7. Right pane creates a new passage card containing:
    - the original selected text
    - the generated answer
@@ -92,7 +92,7 @@ The app is passage-centric, not document-centric. Each AI interaction is grounde
 Minimal actions only:
 
 - `Translate`
-- `Ask Codex`
+- `Ask ZhiJiao`
 
 The toolbar should stay lightweight to avoid interrupting reading.
 
@@ -116,7 +116,7 @@ When the user clicks `Translate`:
 
 ### Ask flow
 
-When the user clicks `Ask Codex`:
+When the user clicks `Ask ZhiJiao`:
 
 - Start a scoped assistant session for the selected passage
 - Show several quick prompts, for example:
@@ -204,9 +204,7 @@ These prompts are starting points. They should be stored as editable templates i
 
 Implement `OpenAIProvider` first. This gives the fastest path to a usable MVP.
 
-The UI copy for the question action should be configurable. If the product surface says `Ask Codex` in MVP, treat that as product language only; the actual backend implementation still goes through `OpenAIProvider` in phase 1.
-
-> **Naming note:** Throughout this document, "Codex" refers to the product-facing label shown in the UI, not the OpenAI Codex API. The MVP backend calls the OpenAI Chat Completions API. Do not confuse the two when implementing.
+The UI copy for the question action should be configurable. If the product surface says `Ask ZhiJiao` in MVP, treat that as product language only; the actual backend implementation still goes through `OpenAIProvider` in phase 1.
 
 ### Phase 2
 
@@ -286,7 +284,7 @@ The MVP is successful when all of the following work end to end:
 1. User can upload and display a local PDF.
 2. User can select a text passage in the PDF.
 3. Clicking `Translate` returns a Chinese translation in the right pane within 5 to 15 seconds。
-4. Clicking `Ask Codex` creates a passage-scoped Q&A flow in the right pane.
+4. Clicking `Ask ZhiJiao` creates a passage-scoped Q&A flow in the right pane.
 5. Follow-up questions stay within the selected passage context.
 6. Selecting a new passage creates a new context. The previous card's conversation history must not be injected into the new card's prompt.
 7. The user never has to manually copy and paste selected text into the assistant.

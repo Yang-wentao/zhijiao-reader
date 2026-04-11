@@ -11,13 +11,13 @@ Let another user clone, install, and launch the reader with one command, then fi
 3. Tell macOS/Linux users to run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/<owner>/zhijiao-reader/main/install.sh | bash
 ```
 
 4. Tell Windows users to run:
 
 ```powershell
-irm https://raw.githubusercontent.com/<owner>/<repo>/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/<owner>/zhijiao-reader/main/install.ps1 | iex
 ```
 
 ## Why this packaging works

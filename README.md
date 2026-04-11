@@ -1,6 +1,6 @@
-# Codex Paper Reader
+# 知交文献阅读 / ZhiJiao Reader
 
-Local PDF reader with a two-pane paper reading workflow: PDF on the left, AI translation and Q&A on the right.
+AI-powered paper reader for a two-pane workflow: PDF on the left, translation and Q&A on the right.
 
 ## What It Is
 
@@ -46,8 +46,8 @@ npm run dev
 
 You can also use the packaged startup entry points:
 
-- macOS: double-click `Launch Codex Paper Reader.command`
-- Windows: double-click `Launch Codex Paper Reader.bat`
+- macOS: double-click `Launch ZhiJiao Reader.command`
+- Windows: double-click `Launch ZhiJiao Reader.bat`
 - Terminal:
 
 ```bash
@@ -116,8 +116,8 @@ Once the repository is published, users can either:
 1. Clone and launch from source:
 
 ```bash
-git clone https://github.com/<owner>/codex-paper-reader.git
-cd codex-paper-reader
+git clone https://github.com/<owner>/zhijiao-reader.git
+cd zhijiao-reader
 npm run launch
 ```
 

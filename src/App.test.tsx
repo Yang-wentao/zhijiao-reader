@@ -102,7 +102,7 @@ describe("App selection flow", () => {
       reasoningEffort: "low",
       reasoningEffortOptions: ["low", "medium", "high"],
       canSwitchReasoningEffort: true,
-      questionActionLabel: "Ask Codex",
+      questionActionLabel: "Ask ZhiJiao",
       maxSelectionChars: 8000,
       setupRequired: false,
       connectionLabel: "Local Codex · gpt-5.4-mini · low",
@@ -153,7 +153,7 @@ describe("App selection flow", () => {
       reasoningEffort: "low",
       reasoningEffortOptions: ["low", "medium", "high"],
       canSwitchReasoningEffort: true,
-      questionActionLabel: "Ask Codex",
+      questionActionLabel: "Ask ZhiJiao",
       maxSelectionChars: 8000,
       setupRequired: false,
       connectionLabel:
@@ -182,7 +182,7 @@ describe("App selection flow", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Codex Panel")).toBeInTheDocument();
+    expect(await screen.findByText("知交文献阅读")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Provider" })).not.toBeInTheDocument();
     expect(screen.queryByText(/Default flow:/)).not.toBeInTheDocument();
@@ -208,7 +208,7 @@ describe("App selection flow", () => {
       reasoningEffort: "low",
       reasoningEffortOptions: ["low", "medium", "high"],
       canSwitchReasoningEffort: true,
-      questionActionLabel: "Ask Codex",
+      questionActionLabel: "Ask ZhiJiao",
       maxSelectionChars: 8000,
       setupRequired: true,
       connectionLabel: "Not connected",

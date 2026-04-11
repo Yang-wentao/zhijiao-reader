@@ -1,6 +1,6 @@
 {
-  "appId": "com.yangwentao.codexpaperreader",
-  "productName": "Codex Paper Reader",
+  "appId": "com.yangwentao.zhijiaoreader",
+  "productName": "知交文献阅读",
   "directories": {
     "output": "release/electron"
   },

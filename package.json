@@ -1,8 +1,8 @@
 {
-  "name": "codex-paper-reader",
+  "name": "zhijiao-reader",
   "private": true,
   "version": "0.1.0",
-  "description": "Local PDF paper reader with translation and assistant panel support.",
+  "description": "ZhiJiao Reader: AI-powered local paper reader with translation and Q&A support.",
   "author": "Yang Wentao",
   "type": "module",
   "main": "electron/main.mjs",
