@@ -4,7 +4,13 @@
 
 ![知交文献阅读截图](docs/screenshot.png)
 
-知交文献阅读是一个本地优先的 AI 文献阅读工具：左侧阅读 PDF，右侧即时显示翻译、术语解释和同段追问卡片。它面向中文学术阅读场景，支持 DeepSeek、交大 API、OpenAI、本地 Codex，以及自定义 OpenAI-compatible 接口。
+知交文献阅读是一个本地优先的 AI 文献阅读工具：左侧阅读 PDF，右侧即时显示翻译、术语解释和同段追问卡片。它主要面向中文学术阅读场景，支持 DeepSeek、交大 API、OpenAI、本地 Codex，以及自定义 OpenAI-compatible 接口。
+
+## 交大适配说明
+
+本项目已经针对上海交通大学的 API 接入方式做了专门适配，默认提供了 `SJTU API` 连接选项，并优先兼容交大同学常用的模型配置流程。
+
+如果你是交大的同学，建议优先直接使用内置的 `SJTU API` 模式；配置路径更短，界面也已经提前做过适配。也欢迎大家多多使用、继续反馈。
 
 ## 项目形态
 
@@ -15,7 +21,7 @@
 - 公式渲染：`react-markdown` + `remark-math` + `rehype-katex`
 - AI 后端：Local Codex CLI、DeepSeek API、SJTU API、OpenAI API、自定义兼容接口
 
-默认运行方式是本地浏览器应用；仓库中也包含 Electron 打包配置，便于后续分发桌面版。
+默认运行方式是本地浏览器应用；仓库里也包含 Electron 打包配置，方便后续分发桌面版。
 
 ## 当前功能
 
@@ -52,7 +58,7 @@ npm run dev
 启动后：
 
 1. 如果本地没有 `.env`，程序会自动从 `.env.example` 生成。
-2. 如果还没有完成模型配置，右侧会提示进入 `Settings`。
+2. 如果还没有完成模型配置，右侧会提示你进入 `Settings`。
 3. 所有真实密钥都只保存在本地，不会进入 git。
 
 本地配置文件：
@@ -99,7 +105,7 @@ npm run electron:pack
 说明：
 
 - `npm run launch`：本地一键启动
-- `npm run configure`：在终端里预填 `.env` 默认项
+- `npm run configure`：在终端里预填 `.env` 默认配置
 - `npm run check`：检查本地依赖与启动条件
 - `npm run release:zip`：从当前已提交的 git 状态生成源码压缩包
 - `npm run electron:dev`：Electron 开发模式
@@ -118,7 +124,7 @@ npm run electron:pack
 2. 直接克隆源码后运行 `npm run launch`
 3. 从 GitHub Releases 下载打包产物
 
-如果使用者选择 `Local Codex`，仍需要在自己的电脑上单独安装 Codex CLI；这部分不会跟随本项目一起分发。
+如果使用者选择 `Local Codex`，仍需要在自己的电脑上单独安装 Codex CLI；这部分不会随本项目一起分发。
 
 发布辅助文档：
 
