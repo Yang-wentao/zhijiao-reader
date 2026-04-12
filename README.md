@@ -2,7 +2,8 @@
 
 [English README](README_en.md)
 
-![知交文献阅读截图](docs/screenshot.png)
+<img width="1349" height="917" alt="image" src="https://github.com/user-attachments/assets/f05f6392-198b-46e6-a87b-8caf922a4822" />
+
 
 知交文献阅读是一个本地优先的 AI 文献阅读工具：左侧阅读 PDF，右侧即时显示翻译、术语解释和同段追问卡片。它主要面向中文学术阅读场景，支持 DeepSeek、交大 API、OpenAI、本地 Codex，以及自定义 OpenAI-compatible 接口。
 
