@@ -37,6 +37,14 @@ export type SelectionOverlay = {
   y: number;
 };
 
+export type PdfContextSelection = {
+  text: string;
+  startPage: number | null;
+  endPage: number | null;
+  x: number;
+  y: number;
+};
+
 export type AppConfig = {
   hasApiKey: boolean;
   isReady: boolean;
@@ -53,6 +61,7 @@ export type AppConfig = {
   maxSelectionChars: number;
   setupRequired: boolean;
   connectionLabel: string;
+  notesReady: boolean;
 };
 
 export type ConnectionSettings = {
@@ -82,6 +91,11 @@ export type ConnectionSettings = {
     apiKey: string;
     model: string;
     baseUrl: string;
+  };
+  notes: {
+    vaultPath: string;
+    subdir: string;
+    includeTimestamp: boolean;
   };
 };
 

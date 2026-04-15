@@ -290,6 +290,65 @@ export function ConnectionSettingsModal({
           {currentSection}
         </div>
 
+        <div className="settings-grid settings-notes-grid">
+          <div className="settings-section-header">
+            <p className="panel-kicker">Obsidian 笔记</p>
+            <p className="settings-section-hint">
+              划线后右键可将原文（可选含译文）追加到 vault 内的 markdown 文件。跨设备同步由 Obsidian 自身负责。
+            </p>
+          </div>
+          <label className="settings-field settings-field-wide">
+            <span>Vault 绝对路径</span>
+            <input
+              aria-label="Obsidian vault path"
+              placeholder="/Users/you/Documents/ObsidianVault"
+              value={settings.notes.vaultPath}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  notes: {
+                    ...settings.notes,
+                    vaultPath: event.target.value,
+                  },
+                })
+              }
+            />
+          </label>
+          <label className="settings-field">
+            <span>子目录</span>
+            <input
+              aria-label="Obsidian notes subdir"
+              value={settings.notes.subdir}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  notes: {
+                    ...settings.notes,
+                    subdir: event.target.value,
+                  },
+                })
+              }
+            />
+          </label>
+          <label className="settings-field settings-field-checkbox">
+            <input
+              type="checkbox"
+              aria-label="Include timestamp"
+              checked={settings.notes.includeTimestamp}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  notes: {
+                    ...settings.notes,
+                    includeTimestamp: event.target.checked,
+                  },
+                })
+              }
+            />
+            <span>包含时间戳</span>
+          </label>
+        </div>
+
         <footer className="settings-modal-footer">
           <div className="settings-test-result" aria-live="polite">
             {testResult}
