@@ -2,7 +2,7 @@
 
 ![知交文献阅读截图](docs/screenshot.png)
 
-AI-powered paper reader for a two-pane workflow: PDF on the left, translation and Q&A on the right.
+AI-powered paper reader for a two-pane workflow: PDF on the left, translation, notes, and Q&A on the right.
 
 ## What It Is
 
@@ -26,7 +26,8 @@ By default it runs as a local web app in your browser. The repository also inclu
 1. Copy `.env.example` to `.env`.
 2. `npm run launch` can start immediately even if no API is configured yet.
 3. Complete provider setup inside the app with the `Settings` button in the right panel.
-4. `npm run configure` is still available if you prefer terminal setup for the `.env` defaults.
+4. To use Obsidian notes, set the vault path and excerpt subdirectory in `Settings`.
+5. `npm run configure` is still available if you prefer terminal setup for the `.env` defaults.
 
 The real `.env` file stays local and is ignored by git. Only `.env.example` should be shared.
 Runtime connection settings are stored locally in `config/providers.local.json`, which is also ignored by git.
@@ -89,8 +90,9 @@ GitHub publish helper docs:
 
 - Upload a local PDF
 - Open multiple local PDFs with tabs
-- Select a passage in the PDF
-- Translate the passage into Chinese
+- Select a passage in the PDF and open a right-click action menu
+- Translate the passage into Chinese from the context menu
+- Append the selected original text, or original text plus translation, to a local Obsidian vault markdown note
 - Ask follow-up questions in a card scoped to that passage
 - Copy or retry responses
 - Resize the split panes
