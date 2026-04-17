@@ -23,6 +23,7 @@ type RouteOptions = {
   setProvider?: (provider: ProviderName) => void;
   setModel?: (model: string) => void;
   setReasoningEffort?: (reasoningEffort: "low" | "medium" | "high") => void;
+  getNotesReady?: () => boolean;
 };
 
 const MAX_SELECTION_CHARS = 8000;
@@ -179,6 +180,7 @@ function buildConfigResponse(options: RouteOptions) {
     maxSelectionChars: MAX_SELECTION_CHARS,
     setupRequired: options.getSetupRequired(),
     connectionLabel: options.getConnectionLabel(),
+    notesReady: options.getNotesReady ? options.getNotesReady() : false,
   };
 }
 

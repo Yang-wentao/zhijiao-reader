@@ -13,7 +13,7 @@ describe("PdfPane", () => {
         activeFileUrl={null}
         activeFileName={null}
         onFileSelected={vi.fn()}
-        onSelectionCaptured={vi.fn()}
+        onContextSelection={vi.fn()}
         onTabSelected={vi.fn()}
         onTabClosed={vi.fn()}
       />,
@@ -42,7 +42,7 @@ describe("PdfPane", () => {
         activeFileUrl={null}
         activeFileName="paper-a.pdf"
         onFileSelected={vi.fn()}
-        onSelectionCaptured={vi.fn()}
+        onContextSelection={vi.fn()}
         onTabSelected={onTabSelected}
         onTabClosed={onTabClosed}
       />,

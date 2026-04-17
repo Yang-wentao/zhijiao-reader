@@ -219,13 +219,16 @@ electron-builder --config electron-builder.json --publish never
 ### 5.2 PDF -> 卡片的主流程
 
 1. 用户在 `PdfPane` 选择 PDF
-2. `PdfPane` 捕获选区文本
-3. `App.tsx` 在 `handleSelectionCaptured()` 中校验长度
-4. 当前实现是 **选中后直接翻译**
-5. 创建 card
-6. 调用 `streamTranslation()`
-7. SSE 增量数据进入 `appendChunkWithCadence(...)`
-8. `cardsReducer` 更新卡片状态
+2. 用户在选区上 **右键** 触发 `contextmenu`
+3. `PdfPane` 通过 `onContextSelection` 上报选区文本与起止页
+4. `App.tsx` 弹出 `PdfContextMenu`，菜单提供三项：
+   - 翻译
+   - 加入笔记（原文）
+   - 加入笔记（原文 + 译文）
+5. 用户点「翻译」或「加入笔记（原文+译文）」时才创建 card 并调用 `streamTranslation()`
+6. SSE 增量数据进入 `appendChunkWithCadence(...)`
+7. `cardsReducer` 更新卡片状态
+8. 「加入笔记」走 `POST /api/notes/append`，写入到 Obsidian vault 内的 markdown 文件
 
 ### 5.3 卡片状态机
 
@@ -250,12 +253,12 @@ electron-builder --config electron-builder.json --publish never
 
 ### 5.4 一个容易误判的点
 
-仓库里存在 `src/components/SelectionToolbar.tsx`，但当前主流程**没有实际接入它**。现在不是“选中后弹 Translate / Ask”模式，而是 **直接进入翻译**。
+仓库里存在 `src/components/SelectionToolbar.tsx`，但当前主流程**没有实际接入它**。当前模型是 **右键菜单驱动**：选区本身不会触发任何网络请求，必须通过 `PdfContextMenu` 选择「翻译」或「加入笔记」才会建卡或写笔记。
 
-如果后续要恢复浮动工具栏：
+如果后续要恢复浮动工具栏或恢复“选中即翻译”：
 
-- 需要改 `App.tsx` 的 `handleSelectionCaptured`
-- 同时要检查测试是否仍然假设“选中即翻译”
+- 需要改 `PdfPane.tsx` 的 `contextmenu` 监听以及 `App.tsx` 的 `handleContextSelection`
+- 同时要检查测试 (`App.test.tsx`) 是否仍然假设“选中不翻译”
 
 ---
 
@@ -556,7 +559,8 @@ npm run electron:pack
    - UI 上的流式感主要是前端渐进显示
 
 2. **`SelectionToolbar.tsx` 当前未接入主流程**
-   - 现在是选区后直接翻译
+   - 当前是「选区 → 右键菜单 → 翻译 / 加入笔记」模式
+   - 选区本身不会触发任何后端请求，避免误选浪费 API 调用
 
 3. **README 经常被直接编辑**
    - 推送前先 `git fetch`，避免因为远端 README 改动导致 push reject

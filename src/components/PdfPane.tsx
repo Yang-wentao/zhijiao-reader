@@ -4,7 +4,7 @@ import { searchPlugin } from "@react-pdf-viewer/search";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/search/lib/styles/index.css";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.js?url";
-import type { PdfTabSummary, SelectionOverlay } from "../types";
+import type { PdfContextSelection, PdfTabSummary } from "../types";
 
 type PdfPaneProps = {
   tabs: PdfTabSummary[];
@@ -12,7 +12,7 @@ type PdfPaneProps = {
   activeFileUrl: string | null;
   activeFileName: string | null;
   onFileSelected: (file: File) => void;
-  onSelectionCaptured: (selection: SelectionOverlay | null) => void;
+  onContextSelection: (selection: PdfContextSelection) => void;
   onTabSelected: (tabId: string) => void;
   onTabClosed: (tabId: string) => void;
 };
@@ -23,11 +23,10 @@ export function PdfPane({
   activeFileUrl,
   activeFileName,
   onFileSelected,
-  onSelectionCaptured,
+  onContextSelection,
   onTabSelected,
   onTabClosed,
 }: PdfPaneProps) {
-  const [selectionError, setSelectionError] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number | SpecialZoomLevel>(SpecialZoomLevel.PageWidth);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const searchPluginInstance = searchPlugin();
@@ -38,46 +37,32 @@ export function PdfPane({
       return;
     }
 
-    const handleMouseUp = () => {
-      window.requestAnimationFrame(() => {
-        const selection = window.getSelection();
-        if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-          onSelectionCaptured(null);
-          return;
-        }
-
-        const range = selection.getRangeAt(0);
-        const commonNode = range.commonAncestorContainer;
-        if (!container.contains(commonNode)) {
-          return;
-        }
-
-        const selectedText = selection.toString().trim();
-        if (!selectedText) {
-          onSelectionCaptured(null);
-          return;
-        }
-
-        const rect = range.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) {
-          setSelectionError("This PDF may not expose selectable text. Scanned PDFs are not supported in MVP.");
-          onSelectionCaptured(null);
-          return;
-        }
-
-        setSelectionError(null);
-        onSelectionCaptured({
-          text: selectedText,
-          pageNumber: findPageNumber(commonNode),
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + 12,
-        });
+    const handleContextMenu = (event: MouseEvent) => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      if (!container.contains(range.commonAncestorContainer)) {
+        return;
+      }
+      const text = selection.toString().trim();
+      if (!text) {
+        return;
+      }
+      event.preventDefault();
+      onContextSelection({
+        text,
+        startPage: findPageNumber(range.startContainer),
+        endPage: findPageNumber(range.endContainer),
+        x: event.clientX,
+        y: event.clientY,
       });
     };
 
-    container.addEventListener("mouseup", handleMouseUp);
-    return () => container.removeEventListener("mouseup", handleMouseUp);
-  }, [onSelectionCaptured]);
+    container.addEventListener("contextmenu", handleContextMenu);
+    return () => container.removeEventListener("contextmenu", handleContextMenu);
+  }, [onContextSelection]);
 
   return (
     <div className="pdf-shell">
@@ -173,7 +158,6 @@ export function PdfPane({
           </Worker>
         )}
       </div>
-      {selectionError ? <p className="inline-warning">{selectionError}</p> : null}
     </div>
   );
 }
