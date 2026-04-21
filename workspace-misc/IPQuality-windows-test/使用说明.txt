@@ -1,0 +1,12 @@
+Windows 测试说明
+
+1. 直接双击 `run-interactive-windows.cmd`
+2. 推荐环境：已安装 Git for Windows
+3. 如果没有 Git for Windows，但启用了 WSL，也可以运行
+4. 如果窗口里提示找不到 Git Bash 或 WSL，请先安装 Git for Windows
+5. 如果运行失败，不要关窗口，把最后一屏报错截图发回
+
+目录说明：
+- `run-interactive-windows.cmd`：Windows 启动脚本
+- `ip.sh`：IPQuality 主脚本
+- `ref/`：运行时依赖的数据文件
