@@ -59,5 +59,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            release/electron/*.dmg
             release/electron/*.zip
+            release/electron/*.exe
             release/electron/*.AppImage

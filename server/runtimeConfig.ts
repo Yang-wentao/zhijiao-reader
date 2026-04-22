@@ -66,7 +66,9 @@ type CodexRunner = (binary: string, args: string[], options: { cwd: string; enco
   error?: Error;
 };
 
-const DEFAULT_CONNECTION_FILE = join(process.cwd(), "config", "providers.local.json");
+const DEFAULT_CONNECTION_FILE = process.env.ZHIJIAO_USER_DATA
+  ? join(process.env.ZHIJIAO_USER_DATA, "providers.json")
+  : join(process.cwd(), "config", "providers.local.json");
 
 export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): ConnectionSettings {
   const activeProvider = normalizeProvider(env.AI_PROVIDER);

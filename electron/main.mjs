@@ -10,6 +10,9 @@ const packagedStaticDir = app.isPackaged ? join(process.resourcesPath, "dist") :
 const packagedServerEntry = app.isPackaged
   ? join(process.resourcesPath, "server", "index.js")
   : join(__dirname, "..", "build", "server", "index.js");
+const appIconPath = app.isPackaged
+  ? join(process.resourcesPath, "icon.png")
+  : join(__dirname, "..", "resources", "icons", "icon.png");
 
 let mainWindow = null;
 let startedServer = null;
@@ -21,6 +24,7 @@ function createMainWindow() {
     minWidth: 1180,
     minHeight: 760,
     title: "知交文献阅读",
+    icon: appIconPath,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, "preload.mjs"),
@@ -44,6 +48,7 @@ function getTargetUrl() {
 
 app.whenReady().then(async () => {
   if (!isDev) {
+    process.env.ZHIJIAO_USER_DATA = app.getPath("userData");
     startedServer = await startEmbeddedServer();
   }
 
