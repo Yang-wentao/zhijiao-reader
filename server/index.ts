@@ -125,8 +125,11 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
     const resolvedStaticDir = resolve(options.staticDir);
     if (existsSync(resolvedStaticDir)) {
       app.use(express.static(resolvedStaticDir));
-      app.get("*", (req, res, next) => {
-        if (req.path.startsWith("/api")) {
+      // SPA fallback — served for any non-/api GET that didn't match a static file.
+      // Uses app.use() rather than app.get("*", ...) because Express 5 / path-to-regexp v8
+      // no longer accepts a bare "*" as a route pattern.
+      app.use((req, res, next) => {
+        if (req.method !== "GET" || req.path.startsWith("/api")) {
           next();
           return;
         }
