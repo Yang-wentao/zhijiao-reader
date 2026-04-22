@@ -6,10 +6,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
 const rendererUrl = process.env.ELECTRON_RENDERER_URL || "http://127.0.0.1:5173";
-const packagedStaticDir = app.isPackaged ? join(process.resourcesPath, "dist") : join(__dirname, "..", "dist");
-const packagedServerEntry = app.isPackaged
-  ? join(process.resourcesPath, "server", "index.js")
-  : join(__dirname, "..", "build", "server", "index.js");
+// In packaged builds, dist/ and build/server/ are bundled inside app.asar so
+// they share the asar's node_modules tree (otherwise `import "dotenv"` etc.
+// fail to resolve once the .app moves outside the dev worktree). app.getAppPath()
+// returns the asar root in packaged mode and the project root in dev mode.
+const appPath = app.isPackaged ? app.getAppPath() : join(__dirname, "..");
+const packagedStaticDir = join(appPath, "dist");
+const packagedServerEntry = join(appPath, "build", "server", "index.js");
+// icon.png stays in extraResources (real disk path) so BrowserWindow can read it.
 const appIconPath = app.isPackaged
   ? join(process.resourcesPath, "icon.png")
   : join(__dirname, "..", "resources", "icons", "icon.png");

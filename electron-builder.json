@@ -6,11 +6,11 @@
   },
   "files": [
     "electron/**/*",
+    "dist/**/*",
+    "build/server/**/*",
     "package.json"
   ],
   "extraResources": [
-    { "from": "dist", "to": "dist" },
-    { "from": "build/server", "to": "server" },
     { "from": "resources/icons/icon.png", "to": "icon.png" }
   ],
   "extraMetadata": {
