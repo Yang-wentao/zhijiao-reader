@@ -54,7 +54,7 @@ export function ConnectionSettingsModal({
       return (
         <>
           <label className="settings-field settings-field-wide">
-            <span>Codex binary</span>
+            <span>Codex 可执行文件</span>
             <input
               aria-label="Codex binary"
               value={settings.codex.bin}
@@ -70,7 +70,7 @@ export function ConnectionSettingsModal({
             />
           </label>
           <label className="settings-field">
-            <span>Codex model</span>
+            <span>模型</span>
             <select
               aria-label="Codex model"
               value={settings.codex.model}
@@ -92,7 +92,7 @@ export function ConnectionSettingsModal({
             </select>
           </label>
           <label className="settings-field">
-            <span>Reasoning</span>
+            <span>推理强度</span>
             <select
               aria-label="Reasoning"
               value={settings.codex.reasoningEffort}
@@ -106,9 +106,9 @@ export function ConnectionSettingsModal({
                 })
               }
             >
-              <option value="low">low</option>
-              <option value="medium">medium</option>
-              <option value="high">high</option>
+              <option value="low">低（最快）</option>
+              <option value="medium">中</option>
+              <option value="high">高（最慢但更细致）</option>
             </select>
           </label>
         </>
@@ -128,7 +128,7 @@ export function ConnectionSettingsModal({
       <>
         {activeProvider === "custom" ? (
           <label className="settings-field">
-            <span>Provider label</span>
+            <span>服务名称</span>
             <input
               aria-label="Provider label"
               value={settings.custom.label}
@@ -163,7 +163,7 @@ export function ConnectionSettingsModal({
         </label>
         {activeProvider === "deepseek" ? (
           <label className="settings-field">
-            <span>Model name</span>
+            <span>模型</span>
             <select
               aria-label="Model name"
               value={target.model}
@@ -187,7 +187,7 @@ export function ConnectionSettingsModal({
           </label>
         ) : activeProvider === "sjtu" ? (
           <label className="settings-field">
-            <span>Model name</span>
+            <span>模型</span>
             <select
               aria-label="Model name"
               value={target.model}
@@ -211,7 +211,7 @@ export function ConnectionSettingsModal({
           </label>
         ) : (
           <label className="settings-field">
-            <span>Model name</span>
+            <span>模型</span>
             <input
               aria-label="Model name"
               value={target.model}
@@ -256,20 +256,20 @@ export function ConnectionSettingsModal({
 
   return (
     <div className="settings-modal-backdrop">
-      <section className="settings-modal" role="dialog" aria-modal="true" aria-label="Connection settings">
+      <section className="settings-modal" role="dialog" aria-modal="true" aria-label="连接设置">
         <header className="settings-modal-header">
           <div>
-            <p className="panel-kicker">Connection</p>
-            <h2>Connection settings</h2>
+            <p className="panel-kicker">连接</p>
+            <h2>连接设置</h2>
           </div>
           <button type="button" className="secondary-button" onClick={onClose}>
-            Close
+            关闭
           </button>
         </header>
 
         <div className="settings-grid">
           <label className="settings-field settings-field-wide">
-            <span>Connection provider</span>
+            <span>服务提供方</span>
             <select
               aria-label="Connection provider"
               value={settings.activeProvider}
@@ -290,16 +290,20 @@ export function ConnectionSettingsModal({
           {currentSection}
         </div>
 
+        <p className="settings-key-hint">
+          API key 仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。
+        </p>
+
         <footer className="settings-modal-footer">
           <div className="settings-test-result" aria-live="polite">
             {testResult}
           </div>
           <div className="settings-actions">
             <button type="button" className="secondary-button" onClick={onTest} disabled={isTesting || isSaving}>
-              {isTesting ? "Testing..." : "Test connection"}
+              {isTesting ? "测试中…" : "测试连接"}
             </button>
             <button type="button" className="primary-button" onClick={onSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save settings"}
+              {isSaving ? "保存中…" : "保存设置"}
             </button>
           </div>
         </footer>

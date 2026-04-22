@@ -71,7 +71,7 @@ describe("PassageCard", () => {
       />,
     );
 
-    expect(screen.getByText("Streaming response")).toBeInTheDocument();
+    expect(screen.getByText("正在生成…")).toBeInTheDocument();
   });
 
   it("renders the full selected passage in the card header", () => {
@@ -122,10 +122,10 @@ describe("PassageCard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    fireEvent.click(screen.getByRole("button", { name: "复制译文" }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("可复制的译文"));
-    expect(onNotice).toHaveBeenCalledWith("Copied the latest assistant response.");
+    expect(onNotice).toHaveBeenCalledWith("已复制译文。");
   });
 
   it("falls back gracefully when clipboard copying fails", async () => {
@@ -156,7 +156,7 @@ describe("PassageCard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    fireEvent.click(screen.getByRole("button", { name: "复制译文" }));
 
     await waitFor(() => expect(onNotice).toHaveBeenCalled());
   });
@@ -174,7 +174,7 @@ describe("PassageCard", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Retrying..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "重试中…" })).toBeDisabled();
   });
 
   it("renders assistant formulas with math markup instead of raw latex text", () => {

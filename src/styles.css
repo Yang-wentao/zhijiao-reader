@@ -355,7 +355,73 @@ textarea {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 6px;
+}
+
+.card-header-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.card-icon-button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(31, 53, 94, 0.06);
+  color: #4d5b75;
+  font-size: 1.05rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.card-icon-button:hover {
+  background: rgba(31, 53, 94, 0.12);
+  color: #1f355e;
+}
+
+.card-icon-button:focus-visible {
+  outline: 2px solid rgba(102, 136, 194, 0.6);
+  outline-offset: 2px;
+}
+
+.card-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+
+.link-action {
+  border: 0;
+  background: transparent;
+  padding: 4px 6px;
+  font-size: 0.82rem;
+  color: #66748f;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.link-action:hover:not(:disabled) {
+  color: #1f355e;
+  background: rgba(31, 53, 94, 0.06);
+}
+
+.link-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.link-action-divider {
+  color: rgba(102, 136, 194, 0.45);
+  font-size: 0.85rem;
+  user-select: none;
 }
 
 .card-header {
@@ -371,6 +437,10 @@ textarea {
 .card-header-meta {
   grid-area: meta;
   min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
 }
 
 .card-header-actions {
@@ -665,6 +735,50 @@ textarea {
 
 .empty-state-panel {
   margin-top: 60px;
+}
+
+.empty-state-tips {
+  margin: 18px auto 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+  text-align: left;
+  font-size: 0.92rem;
+  color: #4d5b75;
+}
+
+.empty-state-tips li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.empty-state-tips li::before {
+  content: "·";
+  position: absolute;
+  left: 6px;
+  top: -2px;
+  font-size: 1.4rem;
+  color: rgba(102, 136, 194, 0.65);
+  line-height: 1;
+}
+
+.empty-state-tips strong {
+  color: #1f355e;
+  font-weight: 600;
+}
+
+.settings-key-hint {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(102, 136, 194, 0.1);
+  border: 1px solid rgba(102, 136, 194, 0.2);
+  color: #1f355e;
+  font-size: 0.85rem;
+  line-height: 1.5;
 }
 
 .selection-toolbar {

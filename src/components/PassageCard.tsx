@@ -16,10 +16,8 @@ type PassageCardProps = {
 };
 
 const QUICK_PROMPTS = [
-  "这段在说什么？",
   "这段的核心结论是什么？",
   "用更直白的中文重写。",
-  "这段里隐含了哪些假设？",
 ];
 
 export function PassageCard({
@@ -42,7 +40,7 @@ export function PassageCard({
   }, [card.draftOutput, card.messages]);
   const loadingLabel = useMemo(() => {
     if (card.status === "streaming" && card.draftOutput) {
-      return "Streaming response";
+      return "正在生成…";
     }
     if (card.mode === "translate") {
       return LOADING_STEPS[loadingTick % LOADING_STEPS.length];
@@ -63,76 +61,107 @@ export function PassageCard({
     return () => window.clearInterval(interval);
   }, [card.status]);
 
-  async function handleCopy() {
-    const textToCopy = latestAssistantText || card.selectionText;
-    if (!textToCopy) {
-      onNotice("There is nothing to copy yet.");
-      return;
-    }
+  const isBusy = card.status === "loading" || card.status === "streaming";
+  const assistantLabel = card.mode === "translate" ? "译文" : "回答";
+
+  async function copyText(text: string, successLabel: string) {
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(textToCopy);
+        await navigator.clipboard.writeText(text);
       } else {
-        copyWithFallback(textToCopy);
+        copyWithFallback(text);
       }
-      onNotice("Copied the latest assistant response.");
+      onNotice(`已复制${successLabel}。`);
     } catch {
       try {
-        copyWithFallback(textToCopy);
-        onNotice("Copied the latest assistant response.");
+        copyWithFallback(text);
+        onNotice(`已复制${successLabel}。`);
       } catch {
-        onNotice("Copy failed. Check clipboard permissions and try again.");
+        onNotice("复制失败，请检查剪贴板权限。");
       }
     }
   }
 
-  const isBusy = card.status === "loading" || card.status === "streaming";
+  async function handleCopyOriginal() {
+    if (!card.selectionText) {
+      onNotice("还没有可复制的原文。");
+      return;
+    }
+    await copyText(card.selectionText, "原文");
+  }
+
+  async function handleCopyAssistant() {
+    if (!latestAssistantText) {
+      onNotice(`还没有可复制的${assistantLabel}。`);
+      return;
+    }
+    await copyText(latestAssistantText, assistantLabel);
+  }
 
   return (
     <article className={`passage-card ${card.collapsed ? "collapsed" : ""}`}>
       <header className="card-header">
         <div className="card-header-meta">
           <div className="card-eyebrow">
-            <span>{card.mode === "translate" ? "Translate" : questionActionLabel}</span>
-            <span>{card.pageNumber ? `Page ${card.pageNumber}` : "Page unknown"}</span>
+            <span>{card.mode === "translate" ? "译文" : questionActionLabel}</span>
+            <span>{card.pageNumber ? `第 ${card.pageNumber} 页` : "未识别页码"}</span>
           </div>
+          {!card.collapsed ? (
+            <div className="card-inline-actions">
+              <button type="button" className="link-action" onClick={() => void handleCopyOriginal()}>
+                复制原文
+              </button>
+              <span className="link-action-divider" aria-hidden="true">·</span>
+              <button type="button" className="link-action" onClick={() => void handleCopyAssistant()}>
+                复制{assistantLabel}
+              </button>
+              <span className="link-action-divider" aria-hidden="true">·</span>
+              <button
+                type="button"
+                className="link-action"
+                onClick={() => onRetry(card.id)}
+                disabled={isBusy}
+              >
+                {isBusy ? "重试中…" : "重试"}
+              </button>
+            </div>
+          ) : null}
         </div>
         <div className="card-header-actions">
-          <button type="button" className="icon-button" onClick={() => onToggle(card.id)}>
-            {card.collapsed ? "Expand" : "Collapse"}
+          <button
+            type="button"
+            className="card-icon-button"
+            onClick={() => onToggle(card.id)}
+            aria-label={card.collapsed ? "展开" : "折叠"}
+            title={card.collapsed ? "展开" : "折叠"}
+          >
+            {card.collapsed ? "+" : "−"}
           </button>
-          <button type="button" className="icon-button" onClick={() => onDismiss(card.id)}>
-            Close
+          <button
+            type="button"
+            className="card-icon-button"
+            onClick={() => onDismiss(card.id)}
+            aria-label="关闭"
+            title="关闭"
+          >
+            ×
           </button>
         </div>
         <p className="card-selection card-selection-preview">{card.selectionText}</p>
       </header>
       {!card.collapsed ? (
         <>
-          <div className="card-actions">
-            <button type="button" className="secondary-button" onClick={() => void handleCopy()}>
-              Copy
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onRetry(card.id)}
-              disabled={isBusy}
-            >
-              {isBusy ? "Retrying..." : "Retry"}
-            </button>
-          </div>
           <div className="message-list">
             {card.messages.map((message) => (
               <div key={message.id} className={`message-bubble message-${message.role}`}>
-                <span className="message-role">{message.role === "user" ? "You" : "Assistant"}</span>
+                <span className="message-role">{message.role === "user" ? "你的提问" : assistantLabel}</span>
                 <div className="message-content">{renderRichContent(message.content)}</div>
               </div>
             ))}
             {card.status === "streaming" || card.status === "loading" ? (
               <div className="message-bubble message-assistant draft">
                 <div className="message-status">
-                  <span className="message-role">Assistant</span>
+                  <span className="message-role">{assistantLabel}</span>
                   <span className="stream-badge">{loadingLabel}</span>
                 </div>
                 <div className="stream-meter" aria-hidden="true">
@@ -167,11 +196,11 @@ export function PassageCard({
             <textarea
               value={draftQuestion}
               onChange={(event) => setDraftQuestion(event.target.value)}
-              placeholder="Ask a follow-up question about this passage..."
+              placeholder="继续追问这段内容…"
               rows={3}
             />
             <button type="submit" className="primary-button">
-              Send
+              提问
             </button>
           </form>
         </>
@@ -181,15 +210,15 @@ export function PassageCard({
 }
 
 const LOADING_STEPS = [
-  "Preparing translation",
-  "Sending the passage to the current model",
-  "Generating translation and term notes",
+  "正在准备翻译…",
+  "正在把段落发给模型…",
+  "正在生成译文和术语注释…",
 ];
 
 const ASK_LOADING_STEPS = [
-  "Preparing follow-up question",
-  "Asking the current model",
-  "Drafting the answer",
+  "正在整理你的问题…",
+  "正在请求模型…",
+  "正在生成回答…",
 ];
 
 function renderParagraphs(content: string) {

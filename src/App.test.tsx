@@ -183,7 +183,7 @@ describe("App selection flow", () => {
     render(<App />);
 
     expect(await screen.findByText("知交文献阅读")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Provider" })).not.toBeInTheDocument();
     expect(screen.queryByText(/Default flow:/)).not.toBeInTheDocument();
 
@@ -216,13 +216,13 @@ describe("App selection flow", () => {
 
     render(<App />);
 
-    expect(await screen.findByRole("dialog", { name: "Connection settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "连接设置" })).toBeInTheDocument();
   });
 
   it("tests and saves provider settings from the modal", async () => {
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "设置" }));
 
     const providerSelect = await screen.findByRole("combobox", { name: "Connection provider" });
     fireEvent.change(providerSelect, { target: { value: "deepseek" } });
@@ -230,19 +230,21 @@ describe("App selection flow", () => {
     fireEvent.change(screen.getByLabelText("Model name"), { target: { value: "deepseek-chat" } });
     fireEvent.change(screen.getByLabelText("API key"), { target: { value: "deepseek-key" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    fireEvent.click(screen.getByRole("button", { name: "测试连接" }));
     await waitFor(() => expect(testConnectionSettings).toHaveBeenCalledTimes(1));
 
-    fireEvent.click(screen.getByRole("button", { name: "Save settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
 
     await waitFor(() => expect(saveConnectionSettings).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("DeepSeek · deepseek-chat")).toBeInTheDocument();
+    // The header chip now shows "DeepSeek" + the shortened model name "chat".
+    expect(screen.getByText("DeepSeek")).toBeInTheDocument();
+    expect(screen.getByText("chat")).toBeInTheDocument();
   });
 
   it("shows DeepSeek model as a fixed select with recommended chat default", async () => {
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "设置" }));
 
     const providerSelect = await screen.findByRole("combobox", { name: "Connection provider" });
     fireEvent.change(providerSelect, { target: { value: "deepseek" } });
@@ -256,7 +258,7 @@ describe("App selection flow", () => {
   it("shows codex model as a fixed select with three options", async () => {
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "设置" }));
 
     expect(await screen.findByRole("combobox", { name: "Codex model" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "gpt-5.4-mini" })).toBeInTheDocument();
@@ -268,7 +270,7 @@ describe("App selection flow", () => {
   it("shows SJTU API as a first-class provider option", async () => {
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "设置" }));
 
     const providerSelect = await screen.findByRole("combobox", { name: "Connection provider" });
     expect(screen.getByRole("option", { name: "SJTU API" })).toBeInTheDocument();

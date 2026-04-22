@@ -95,7 +95,7 @@ export function PdfPane({
               event.currentTarget.value = "";
             }}
           />
-          <span>Open PDF</span>
+          <span>打开 PDF</span>
         </label>
         <div className="pdf-tab-strip" role="tablist" aria-label="Open PDFs">
           {tabs.map((tab) => (
@@ -124,7 +124,7 @@ export function PdfPane({
           ))}
         </div>
         <div className="pdf-toolbar-meta">
-          <span className="pdf-file-name">{activeFileName ?? "No PDF loaded"}</span>
+          <span className="pdf-file-name">{activeFileName ?? "未打开 PDF"}</span>
           <div className="zoom-controls">
             <button
               type="button"
@@ -159,8 +159,8 @@ export function PdfPane({
       <div ref={containerRef} className="pdf-viewer-area">
         {!activeFileUrl ? (
           <div className="empty-state">
-            <h2>Upload a PDF to start reading</h2>
-            <p>Text-selectable PDFs work best. Scanned image PDFs are not supported in this MVP.</p>
+            <h2>打开一篇 PDF 开始阅读</h2>
+            <p>建议使用文字可选的 PDF；扫描图片版 PDF 暂不支持。</p>
           </div>
         ) : (
           <Worker workerUrl={workerUrl}>
@@ -197,7 +197,7 @@ function findClosestZoomIndex(value: number) {
 
 function formatZoomLabel(zoomLevel: number | SpecialZoomLevel) {
   if (typeof zoomLevel === "string") {
-    return "Fit width";
+    return "适合宽度";
   }
   return `${Math.round(zoomLevel * 100)}%`;
 }

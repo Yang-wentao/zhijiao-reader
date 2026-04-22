@@ -19,8 +19,8 @@ describe("PdfPane", () => {
       />,
     );
 
-    expect(screen.getByText("Open PDF")).toBeInTheDocument();
-    expect(screen.getByText("Upload a PDF to start reading")).toBeInTheDocument();
+    expect(screen.getByText("打开 PDF")).toBeInTheDocument();
+    expect(screen.getByText("打开一篇 PDF 开始阅读")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom out" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
     expect(errorSpy).not.toHaveBeenCalled();

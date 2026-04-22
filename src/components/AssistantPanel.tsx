@@ -40,27 +40,35 @@ export function AssistantPanel({
             <h1>知交文献阅读</h1>
           </div>
           <div className="assistant-header-actions">
-            <div className="model-chip-row model-chip-row-compact" aria-label="Current connection">
+            <div
+              className="model-chip-row model-chip-row-compact"
+              aria-label={`当前连接：${formatProviderLabel(provider)} · ${model}`}
+              title={connectionLabel}
+            >
               <span className="model-provider">{formatProviderLabel(provider)}</span>
-              <strong className="model-value">{model}</strong>
+              <strong className="model-value">{shortenModelName(provider, model)}</strong>
               {reasoningEffort ? <strong className="model-value model-effort">{reasoningEffort}</strong> : null}
             </div>
             <button type="button" className="secondary-button" onClick={onOpenSettings} disabled={isUpdatingModel}>
-              Settings
+              设置
             </button>
           </div>
         </div>
-        <p className="connection-inline-label">{connectionLabel}</p>
       </header>
       {cards.length > 20 ? (
         <div className="inline-warning">
-          More than 20 cards are open. Dismiss older cards to keep the interface responsive.
+          已经打开 20 张以上卡片，建议关闭旧的以保持流畅。
         </div>
       ) : null}
       {cards.length === 0 ? (
         <div className="empty-state empty-state-panel">
-          <h2>Select a passage in the PDF</h2>
-          <p>The right panel will create a new card for translation or Q&amp;A.</p>
+          <h2>在左侧 PDF 中选取一段文字</h2>
+          <p>选中后这里会自动生成译文卡片，也可以继续追问该段落。</p>
+          <ul className="empty-state-tips">
+            <li>支持公式和 markdown 渲染</li>
+            <li>右上角 <strong>Settings</strong> 可切换模型与服务方</li>
+            <li>同一段可以多次追问，卡片会保留对话上下文</li>
+          </ul>
         </div>
       ) : (
         <div className="card-stack">
@@ -96,4 +104,20 @@ function formatProviderLabel(provider: "openai" | "codex" | "deepseek" | "sjtu" 
     return "Custom API";
   }
   return "OpenAI";
+}
+
+// Strip a redundant provider-name prefix from the model so the chip stays compact.
+// Example: "deepseek-chat" under the DeepSeek provider → "chat"; "glm-5" stays as-is.
+function shortenModelName(
+  provider: "openai" | "codex" | "deepseek" | "sjtu" | "custom",
+  model: string,
+) {
+  if (!model) {
+    return model;
+  }
+  const lower = model.toLowerCase();
+  if (provider === "deepseek" && lower.startsWith("deepseek-")) {
+    return model.slice("deepseek-".length);
+  }
+  return model;
 }
