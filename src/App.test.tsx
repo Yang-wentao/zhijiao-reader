@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import type { PdfTabSummary } from "./types";
 
 const {
+  appendNote,
   fetchAppConfig,
   fetchConnectionSettings,
   saveConnectionSettings,
@@ -14,6 +16,7 @@ const {
   updateAppProvider,
   updateAppReasoningEffort,
 } = vi.hoisted(() => ({
+  appendNote: vi.fn(),
   fetchAppConfig: vi.fn(),
   fetchConnectionSettings: vi.fn(),
   saveConnectionSettings: vi.fn(),
@@ -26,6 +29,7 @@ const {
 }));
 
 vi.mock("./lib/api", () => ({
+  appendNote,
   fetchAppConfig,
   fetchConnectionSettings,
   saveConnectionSettings,
@@ -48,33 +52,56 @@ vi.mock("./components/SplitLayout", () => ({
 
 vi.mock("./components/PdfPane", () => ({
   PdfPane: ({
+    tabs,
+    activeTabId,
     onFileSelected,
-    onSelectionCaptured,
+    onContextSelection,
+    onTabSelected,
   }: {
+    tabs: PdfTabSummary[];
+    activeTabId: string | null;
     onFileSelected: (file: File) => void;
-    onSelectionCaptured: (selection: {
+    onContextSelection: (selection: {
       text: string;
-      pageNumber: number | null;
+      startPage: number | null;
+      endPage: number | null;
       x: number;
       y: number;
     }) => void;
+    onTabSelected: (tabId: string) => void;
   }) => (
     <div>
-      <button type="button" onClick={() => onFileSelected(new File(["pdf"], "paper.pdf", { type: "application/pdf" }))}>
-        Open PDF
-      </button>
       <button
         type="button"
         onClick={() =>
-          onSelectionCaptured({
+          onFileSelected(new File(["pdf"], `paper-${tabs.length + 1}.pdf`, { type: "application/pdf" }))
+        }
+      >
+        Open PDF
+      </button>
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          aria-pressed={tab.id === activeTabId}
+          onClick={() => onTabSelected(tab.id)}
+        >
+          {tab.fileName}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() =>
+          onContextSelection({
             text: "Selected paragraph",
-            pageNumber: 3,
+            startPage: 3,
+            endPage: 3,
             x: 40,
             y: 80,
           })
         }
       >
-        Select passage
+        Right-click selection
       </button>
     </div>
   ),
@@ -106,6 +133,7 @@ describe("App selection flow", () => {
       maxSelectionChars: 8000,
       setupRequired: false,
       connectionLabel: "Local Codex · gpt-5.4-mini · low",
+      notesReady: false,
     });
     fetchConnectionSettings.mockResolvedValue({
       activeProvider: "codex",
@@ -135,6 +163,11 @@ describe("App selection flow", () => {
         model: "custom-model",
         baseUrl: "https://example.com/v1",
       },
+      notes: {
+        vaultPath: "",
+        subdir: "知交摘录",
+        includeTimestamp: true,
+      },
     });
     saveConnectionSettings.mockImplementation(async (settings) => ({
       hasApiKey: false,
@@ -162,11 +195,14 @@ describe("App selection flow", () => {
           : settings.activeProvider === "sjtu"
             ? `SJTU API · ${settings.sjtu.model}`
           : "Local Codex · gpt-5.4-mini · low",
+      notesReady: false,
     }));
     testConnectionSettings.mockResolvedValue({
       ok: true,
       message: "Connection succeeded.",
     });
+    appendNote.mockReset();
+    streamTranslation.mockReset();
     streamTranslation.mockImplementation(async (_card, handlers) => {
       handlers.onDelta("译文");
       handlers.onDone();
@@ -174,11 +210,44 @@ describe("App selection flow", () => {
     streamAsk.mockReset();
   });
 
-  it("starts translation immediately after a passage is selected", async () => {
-    const removeAllRanges = vi.fn();
-    vi.spyOn(window, "getSelection").mockReturnValue({
-      removeAllRanges,
-    } as unknown as Selection);
+  it("does not translate on selection until 翻译 is chosen from the right-click menu", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("知交文献阅读")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Right-click selection" }));
+
+    expect(streamTranslation).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole("menuitem", { name: "翻译" }));
+
+    await waitFor(() => expect(streamTranslation).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps pending note appends when the user switches PDF tabs before translation finishes", async () => {
+    fetchAppConfig.mockResolvedValueOnce({
+      hasApiKey: false,
+      isReady: true,
+      provider: "codex",
+      providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"],
+      canSwitchProviders: true,
+      model: "gpt-5.4-mini",
+      modelOptions: ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"],
+      canSwitchModels: true,
+      reasoningEffort: "low",
+      reasoningEffortOptions: ["low", "medium", "high"],
+      canSwitchReasoningEffort: true,
+      questionActionLabel: "Ask ZhiJiao",
+      maxSelectionChars: 8000,
+      setupRequired: false,
+      connectionLabel: "Local Codex · gpt-5.4-mini · low",
+      notesReady: true,
+    });
+    let capturedHandlers: { onDelta: (chunk: string) => void; onDone: () => void } | null = null;
+    streamTranslation.mockImplementationOnce(async (_card, handlers) => {
+      capturedHandlers = handlers;
+    });
 
     render(<App />);
 
@@ -188,11 +257,30 @@ describe("App selection flow", () => {
     expect(screen.queryByText(/Default flow:/)).not.toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Select passage" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
+    fireEvent.click(await screen.findByRole("button", { name: "paper-1.pdf" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Right-click selection" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "加入笔记（原文 + 译文）" }));
 
     await waitFor(() => expect(streamTranslation).toHaveBeenCalledTimes(1));
-    expect(removeAllRanges).not.toHaveBeenCalled();
-    expect(screen.queryByText("SelectionToolbar")).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "paper-2.pdf" }));
+    expect(appendNote).not.toHaveBeenCalled();
+
+    await act(async () => {
+      capturedHandlers?.onDelta("译文");
+      capturedHandlers?.onDone();
+    });
+
+    await waitFor(() =>
+      expect(appendNote).toHaveBeenCalledWith({
+        pdfName: "paper-1.pdf",
+        startPage: 3,
+        endPage: 3,
+        original: "Selected paragraph",
+        translation: "译文",
+      }),
+    );
   });
 
   it("opens the setup dialog automatically when configuration is required", async () => {
@@ -212,6 +300,7 @@ describe("App selection flow", () => {
       maxSelectionChars: 8000,
       setupRequired: true,
       connectionLabel: "Not connected",
+      notesReady: false,
     });
 
     render(<App />);

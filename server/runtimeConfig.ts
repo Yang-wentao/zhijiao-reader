@@ -35,6 +35,11 @@ export type ConnectionSettings = {
     model: string;
     baseUrl: string;
   };
+  notes: {
+    vaultPath: string;
+    subdir: string;
+    includeTimestamp: boolean;
+  };
 };
 
 type PartialConnectionSettings = Partial<ConnectionSettings> & {
@@ -43,6 +48,7 @@ type PartialConnectionSettings = Partial<ConnectionSettings> & {
   sjtu?: Partial<ConnectionSettings["sjtu"]>;
   openai?: Partial<ConnectionSettings["openai"]>;
   custom?: Partial<ConnectionSettings["custom"]>;
+  notes?: Partial<ConnectionSettings["notes"]>;
 };
 
 export type ConnectionTestInput = {
@@ -100,6 +106,11 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
       model: env.CUSTOM_MODEL?.trim() || "custom-model",
       baseUrl: env.CUSTOM_BASE_URL?.trim() || "https://api.openai.com/v1",
     },
+    notes: {
+      vaultPath: env.OBSIDIAN_VAULT_PATH?.trim() || "",
+      subdir: env.OBSIDIAN_NOTES_SUBDIR?.trim() || "知交摘录",
+      includeTimestamp: env.OBSIDIAN_INCLUDE_TIMESTAMP === "false" ? false : true,
+    },
   };
 }
 
@@ -134,6 +145,14 @@ export function mergeConnectionSettings(
       apiKey: overrides?.custom?.apiKey?.trim() || defaults.custom.apiKey,
       model: overrides?.custom?.model?.trim() || defaults.custom.model,
       baseUrl: overrides?.custom?.baseUrl?.trim() || defaults.custom.baseUrl,
+    },
+    notes: {
+      vaultPath: overrides?.notes?.vaultPath?.trim() ?? defaults.notes.vaultPath,
+      subdir: overrides?.notes?.subdir?.trim() || defaults.notes.subdir,
+      includeTimestamp:
+        typeof overrides?.notes?.includeTimestamp === "boolean"
+          ? overrides.notes.includeTimestamp
+          : defaults.notes.includeTimestamp,
     },
   };
 }

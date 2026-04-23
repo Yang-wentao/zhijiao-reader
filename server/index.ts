@@ -14,6 +14,7 @@ import { OpenAIProvider } from "./providers/openaiProvider.js";
 import { SjtuProvider } from "./providers/sjtuProvider.js";
 import type { AIProvider } from "./providers/types.js";
 import { createAIRouter } from "./routes/ai.js";
+import { createNotesRouter } from "./routes/notes.js";
 import {
   buildConnectionLabel,
   buildDefaultConnectionSettings,
@@ -60,8 +61,15 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
   const app = express();
   const state = await initializeRuntimeState();
   const port = options.port ?? Number(process.env.PORT ?? 8787);
+  const allowedAppOrigins = createAllowedAppOrigins(port, process.env.ZHIJIAO_ALLOWED_ORIGINS);
 
-  app.use(cors());
+  app.use(
+    cors({
+      origin(origin, callback) {
+        callback(null, isAllowedAppOrigin(origin, allowedAppOrigins));
+      },
+    }),
+  );
   app.use(express.json({ limit: "1mb" }));
 
   app.get("/api/health", (_req, res) => {
@@ -118,6 +126,15 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
           state.settings.codex.reasoningEffort = reasoningEffort;
         }
       },
+      getNotesReady: () => state.settings.notes.vaultPath.trim().length > 0,
+    }),
+  );
+
+  app.use(
+    "/api/notes",
+    createNotesRouter({
+      getNotesSettings: () => state.settings.notes,
+      isRequestOriginAllowed: (origin) => isAllowedAppOrigin(origin, allowedAppOrigins),
     }),
   );
 
@@ -307,7 +324,31 @@ function buildAppConfig(state: RuntimeState) {
     maxSelectionChars: 8000,
     setupRequired: state.setupRequired || !runtime.isReady,
     connectionLabel: buildConnectionLabel(state.settings),
+    notesReady: state.settings.notes.vaultPath.trim().length > 0,
   };
+}
+
+export function createAllowedAppOrigins(port: number, additionalOrigins = ""): Set<string> {
+  const origins = new Set([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    `http://localhost:${port}`,
+    `http://127.0.0.1:${port}`,
+  ]);
+  for (const origin of additionalOrigins.split(",")) {
+    const trimmed = origin.trim();
+    if (trimmed) {
+      origins.add(trimmed);
+    }
+  }
+  return origins;
+}
+
+export function isAllowedAppOrigin(origin: string | undefined, allowedOrigins: ReadonlySet<string>): boolean {
+  if (!origin) {
+    return true;
+  }
+  return allowedOrigins.has(origin);
 }
 
 function testCodexBinary(binary: string) {

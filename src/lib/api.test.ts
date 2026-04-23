@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { streamTranslation } from "./api";
+import { appendNote, streamTranslation } from "./api";
 import type { PassageCard } from "../types";
 
 const { readSseStream } = vi.hoisted(() => ({
@@ -59,6 +59,56 @@ describe("stream request timeout", () => {
 
     await assertion;
     expect(abortSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("posts the note payload and returns the resulting file path", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, filePath: "/vault/paper.md", created: true }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await appendNote({
+      pdfName: "paper.pdf",
+      startPage: 1,
+      endPage: 2,
+      original: "snippet",
+      translation: "翻译",
+    });
+
+    expect(result).toEqual({ filePath: "/vault/paper.md", created: true });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/notes/append",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pdfName: "paper.pdf",
+          startPage: 1,
+          endPage: 2,
+          original: "snippet",
+          translation: "翻译",
+        }),
+      }),
+    );
+  });
+
+  it("throws with the server error message when the append call fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "vault path not configured" }),
+      }),
+    );
+    await expect(
+      appendNote({
+        pdfName: "paper.pdf",
+        startPage: 1,
+        endPage: 1,
+        original: "snippet",
+      }),
+    ).rejects.toThrow("vault path not configured");
   });
 
   it("keeps waiting when status events arrive before the response finishes", async () => {

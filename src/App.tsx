@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AssistantPanel } from "./components/AssistantPanel";
 import { ConnectionSettingsModal } from "./components/ConnectionSettingsModal";
+import { PdfContextMenu } from "./components/PdfContextMenu";
 import { PdfPane } from "./components/PdfPane";
 import { SplitLayout } from "./components/SplitLayout";
 import { splitIntoReadableChunks as splitStreamChunks } from "./lib/streaming";
 import {
+  appendNote,
   fetchAppConfig,
   fetchConnectionSettings,
   saveConnectionSettings,
@@ -13,7 +15,13 @@ import {
   testConnectionSettings,
 } from "./lib/api";
 import { cardsReducer, createCard, getCardHistory, validateSelection } from "./state/cards";
-import type { AppConfig, ConnectionSettings, PassageCard, PdfTab, SelectionOverlay } from "./types";
+import type {
+  AppConfig,
+  ConnectionSettings,
+  PassageCard,
+  PdfContextSelection,
+  PdfTab,
+} from "./types";
 
 const DEFAULT_CONFIG: AppConfig = {
   hasApiKey: false,
@@ -31,6 +39,23 @@ const DEFAULT_CONFIG: AppConfig = {
   maxSelectionChars: 8000,
   setupRequired: false,
   connectionLabel: "Not connected",
+  notesReady: false,
+};
+
+type PendingNoteAppend = {
+  id: string;
+  tabId: string;
+  cardId: string;
+  pdfName: string;
+  startPage: number | null;
+  endPage: number | null;
+  original: string;
+};
+
+type ContextMenuState = {
+  tabId: string;
+  selection: PdfContextSelection;
+  pdfName: string;
 };
 
 export default function App() {
@@ -45,6 +70,8 @@ export default function App() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [ratio, setRatio] = useState(0.68);
   const [toast, setToast] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [pendingAppends, setPendingAppends] = useState<PendingNoteAppend[]>([]);
   const tabsRef = useRef<PdfTab[]>([]);
 
   useEffect(() => {
@@ -115,27 +142,10 @@ export default function App() {
     setActiveTabId(nextTab.id);
   }
 
-  function handleSelectionCaptured(nextSelection: SelectionOverlay | null) {
-    if (!nextSelection || !activeTab) {
-      return;
-    }
-    const validation = validateSelection(nextSelection.text, config.maxSelectionChars);
-    if (!validation.ok) {
-      if (validation.reason === "too_long") {
-        setToast("Selected text is too long. Please select a shorter passage.");
-      }
-      return;
-    }
-    void handleTranslate(nextSelection);
-  }
-
-  function dispatchCardAction(action: Parameters<typeof cardsReducer>[1]) {
-    if (!activeTabId) {
-      return;
-    }
+  function dispatchCardActionForTab(tabId: string, action: Parameters<typeof cardsReducer>[1]) {
     setTabs((current) =>
       current.map((tab) =>
-        tab.id === activeTabId
+        tab.id === tabId
           ? {
               ...tab,
               cards: cardsReducer(tab.cards, action),
@@ -145,30 +155,44 @@ export default function App() {
     );
   }
 
-  function createSelectionCard(selection: SelectionOverlay, mode: "translate" | "ask") {
-    const card = createCard(selection.text, selection.pageNumber, mode);
-    dispatchCardAction({ type: "add_card", card });
+  function dispatchCardAction(action: Parameters<typeof cardsReducer>[1]) {
+    if (!activeTabId) {
+      return;
+    }
+    dispatchCardActionForTab(activeTabId, action);
+  }
+
+  function createSelectionCardForTab(
+    tabId: string,
+    text: string,
+    pageNumber: number | null,
+    mode: "translate" | "ask",
+  ) {
+    const card = createCard(text, pageNumber, mode);
+    dispatchCardActionForTab(tabId, { type: "add_card", card });
     return card;
   }
 
-  async function runTranslation(card: PassageCard) {
-    dispatchCardAction({ type: "start_request", cardId: card.id });
+  async function runTranslation(card: PassageCard, tabId: string) {
+    const dispatchForSourceTab = (action: Parameters<typeof cardsReducer>[1]) =>
+      dispatchCardActionForTab(tabId, action);
+    dispatchForSourceTab({ type: "start_request", cardId: card.id });
     let result = "";
     let queue = Promise.resolve();
     try {
       await streamTranslation(card, {
         onDelta: (chunk) => {
           result += chunk;
-          queue = queue.then(() => appendChunkWithCadence(dispatchCardAction, card.id, chunk));
+          queue = queue.then(() => appendChunkWithCadence(dispatchForSourceTab, card.id, chunk));
         },
         onDone: () => {
           void queue.then(() => {
-            dispatchCardAction({ type: "finish_request", cardId: card.id, assistantMessage: result.trim() });
+            dispatchForSourceTab({ type: "finish_request", cardId: card.id, assistantMessage: result.trim() });
           });
         },
       });
     } catch (error) {
-      dispatchCardAction({
+      dispatchForSourceTab({
         type: "fail_request",
         cardId: card.id,
         error: error instanceof Error ? error.message : "Translation failed.",
@@ -176,33 +200,42 @@ export default function App() {
     }
   }
 
-  async function handleTranslate(selection: SelectionOverlay) {
-    const card = createSelectionCard(selection, "translate");
-    await runTranslation(card);
+  async function handleTranslate(text: string, pageNumber: number | null) {
+    if (!activeTabId) {
+      return;
+    }
+    const card = createSelectionCardForTab(activeTabId, text, pageNumber, "translate");
+    await runTranslation(card, activeTabId);
   }
 
   async function handleAsk(cardId: string, question: string) {
+    if (!activeTabId) {
+      return;
+    }
+    const tabId = activeTabId;
     const card = selectedCardById.get(cardId);
     if (!card) {
       return;
     }
-    dispatchCardAction({ type: "start_request", cardId, userMessage: question, mode: "ask" });
+    const dispatchForSourceTab = (action: Parameters<typeof cardsReducer>[1]) =>
+      dispatchCardActionForTab(tabId, action);
+    dispatchForSourceTab({ type: "start_request", cardId, userMessage: question, mode: "ask" });
     let result = "";
     let queue = Promise.resolve();
     try {
       await streamAsk(card, question, getCardHistory(card), {
         onDelta: (chunk) => {
           result += chunk;
-          queue = queue.then(() => appendChunkWithCadence(dispatchCardAction, cardId, chunk));
+          queue = queue.then(() => appendChunkWithCadence(dispatchForSourceTab, cardId, chunk));
         },
         onDone: () => {
           void queue.then(() => {
-            dispatchCardAction({ type: "finish_request", cardId, assistantMessage: result.trim() });
+            dispatchForSourceTab({ type: "finish_request", cardId, assistantMessage: result.trim() });
           });
         },
       });
     } catch (error) {
-      dispatchCardAction({
+      dispatchForSourceTab({
         type: "fail_request",
         cardId,
         error: error instanceof Error ? error.message : "Question failed.",
@@ -211,12 +244,15 @@ export default function App() {
   }
 
   async function handleRetry(cardId: string) {
+    if (!activeTabId) {
+      return;
+    }
     const card = selectedCardById.get(cardId);
     if (!card) {
       return;
     }
     if (card.mode === "translate" && card.messages.length === 0 && !card.lastQuestion) {
-      await runTranslation(card);
+      await runTranslation(card, activeTabId);
       return;
     }
     if (card.lastQuestion) {
@@ -258,6 +294,184 @@ export default function App() {
     }
   }
 
+  function findLatestTranslateCardForText(tabId: string, text: string): PassageCard | null {
+    const trimmed = text.trim();
+    const sourceCards = tabs.find((tab) => tab.id === tabId)?.cards ?? [];
+    for (let index = sourceCards.length - 1; index >= 0; index -= 1) {
+      const card = sourceCards[index];
+      if (card.mode === "translate" && card.selectionText.trim() === trimmed) {
+        return card;
+      }
+    }
+    return null;
+  }
+
+  function getAssistantText(card: PassageCard): string {
+    for (let i = card.messages.length - 1; i >= 0; i -= 1) {
+      const message = card.messages[i];
+      if (message.role === "assistant") {
+        return message.content;
+      }
+    }
+    return "";
+  }
+
+  async function fireAppendNote(payload: {
+    pdfName: string;
+    startPage: number | null;
+    endPage: number | null;
+    original: string;
+    translation?: string | null;
+  }) {
+    try {
+      await appendNote(payload);
+      setToast("已加入 Obsidian 笔记");
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "加入笔记失败");
+    }
+  }
+
+  function handleContextSelection(selection: PdfContextSelection) {
+    if (!activeTab) {
+      return;
+    }
+    const validation = validateSelection(selection.text, config.maxSelectionChars);
+    if (!validation.ok) {
+      if (validation.reason === "too_long") {
+        setToast("Selected text is too long. Please select a shorter passage.");
+      }
+      return;
+    }
+    setContextMenu({
+      tabId: activeTab.id,
+      selection,
+      pdfName: activeTab.fileName,
+    });
+  }
+
+  function handleMenuTranslate() {
+    if (!contextMenu) {
+      return;
+    }
+    const card = createSelectionCardForTab(
+      contextMenu.tabId,
+      contextMenu.selection.text,
+      contextMenu.selection.startPage,
+      "translate",
+    );
+    void runTranslation(card, contextMenu.tabId);
+  }
+
+  function handleAppendOriginal() {
+    if (!contextMenu) {
+      return;
+    }
+    if (!config.notesReady) {
+      setToast("请先在 Settings 配置 Obsidian vault 路径");
+      return;
+    }
+    void fireAppendNote({
+      pdfName: contextMenu.pdfName,
+      startPage: contextMenu.selection.startPage,
+      endPage: contextMenu.selection.endPage,
+      original: contextMenu.selection.text,
+    });
+  }
+
+  function handleAppendWithTranslation() {
+    if (!contextMenu) {
+      return;
+    }
+    if (!config.notesReady) {
+      setToast("请先在 Settings 配置 Obsidian vault 路径");
+      return;
+    }
+    const matched = findLatestTranslateCardForText(contextMenu.tabId, contextMenu.selection.text);
+    if (matched?.status === "done") {
+      void fireAppendNote({
+        pdfName: contextMenu.pdfName,
+        startPage: contextMenu.selection.startPage,
+        endPage: contextMenu.selection.endPage,
+        original: contextMenu.selection.text,
+        translation: getAssistantText(matched),
+      });
+      return;
+    }
+    let cardId: string;
+    if (matched && matched.status !== "error") {
+      cardId = matched.id;
+    } else {
+      const card = createSelectionCardForTab(
+        contextMenu.tabId,
+        contextMenu.selection.text,
+        contextMenu.selection.startPage,
+        "translate",
+      );
+      cardId = card.id;
+      void runTranslation(card, contextMenu.tabId);
+    }
+    setPendingAppends((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        tabId: contextMenu.tabId,
+        cardId,
+        pdfName: contextMenu.pdfName,
+        startPage: contextMenu.selection.startPage,
+        endPage: contextMenu.selection.endPage,
+        original: contextMenu.selection.text,
+      },
+    ]);
+    setToast("翻译完成后将自动写入笔记");
+  }
+
+  useEffect(() => {
+    if (pendingAppends.length === 0) {
+      return;
+    }
+    const ready: Array<{ pending: PendingNoteAppend; card: PassageCard }> = [];
+    const remaining: PendingNoteAppend[] = [];
+    let droppedError = false;
+    pendingAppends.forEach((pending) => {
+      const tab = tabs.find((entry) => entry.id === pending.tabId);
+      if (!tab) {
+        droppedError = true;
+        return;
+      }
+      const card = tab.cards.find((entry) => entry.id === pending.cardId);
+      if (!card) {
+        remaining.push(pending);
+        return;
+      }
+      if (card.status === "done") {
+        ready.push({ pending, card });
+        return;
+      }
+      if (card.status === "error") {
+        droppedError = true;
+        return;
+      }
+      remaining.push(pending);
+    });
+    if (ready.length === 0 && remaining.length === pendingAppends.length && !droppedError) {
+      return;
+    }
+    setPendingAppends(remaining);
+    if (droppedError) {
+      setToast("翻译失败，未加入笔记");
+    }
+    ready.forEach(({ pending, card }) => {
+      void fireAppendNote({
+        pdfName: pending.pdfName,
+        startPage: pending.startPage,
+        endPage: pending.endPage,
+        original: pending.original,
+        translation: getAssistantText(card),
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs, pendingAppends]);
+
   function handleTabClosed(tabId: string) {
     setTabs((current) => {
       const closingIndex = current.findIndex((tab) => tab.id === tabId);
@@ -297,7 +511,7 @@ export default function App() {
             activeFileUrl={activeTab?.fileUrl ?? null}
             activeFileName={activeTab?.fileName ?? null}
             onFileSelected={handleFileSelected}
-            onSelectionCaptured={handleSelectionCaptured}
+            onContextSelection={handleContextSelection}
             onTabSelected={setActiveTabId}
             onTabClosed={handleTabClosed}
           />
@@ -331,6 +545,17 @@ export default function App() {
         onSave={() => void handleConnectionSave()}
         onTest={() => void handleConnectionTest()}
       />
+      {contextMenu ? (
+        <PdfContextMenu
+          x={contextMenu.selection.x}
+          y={contextMenu.selection.y}
+          notesReady={config.notesReady}
+          onClose={() => setContextMenu(null)}
+          onTranslate={handleMenuTranslate}
+          onAppendOriginal={handleAppendOriginal}
+          onAppendWithTranslation={handleAppendWithTranslation}
+        />
+      ) : null}
       {toast ? <div className="toast">{toast}</div> : null}
     </main>
   );

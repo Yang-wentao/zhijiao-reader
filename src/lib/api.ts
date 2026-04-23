@@ -94,6 +94,31 @@ async function updateAppSettings(
   return (await response.json()) as AppConfig;
 }
 
+export type AppendNotePayload = {
+  pdfName: string;
+  startPage: number | null;
+  endPage: number | null;
+  original: string;
+  translation?: string | null;
+};
+
+export async function appendNote(payload: AppendNotePayload): Promise<{ filePath: string; created: boolean }> {
+  const response = await fetch("/api/notes/append", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = (await response.json().catch(() => null)) as
+    | { ok?: boolean; filePath?: string; created?: boolean; error?: string }
+    | null;
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.error ?? "Failed to append note.");
+  }
+  return { filePath: body.filePath ?? "", created: body.created ?? false };
+}
+
 export async function streamTranslation(
   card: PassageCard,
   handlers: StreamHandlers,
