@@ -36,6 +36,7 @@ export type ConnectionSettings = {
     baseUrl: string;
   };
   notes: {
+    enabled: boolean;
     vaultPath: string;
     subdir: string;
     includeTimestamp: boolean;
@@ -107,6 +108,7 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
       baseUrl: env.CUSTOM_BASE_URL?.trim() || "https://api.openai.com/v1",
     },
     notes: {
+      enabled: env.OBSIDIAN_NOTES_ENABLED === "true",
       vaultPath: env.OBSIDIAN_VAULT_PATH?.trim() || "",
       subdir: env.OBSIDIAN_NOTES_SUBDIR?.trim() || "知交摘录",
       includeTimestamp: env.OBSIDIAN_INCLUDE_TIMESTAMP === "false" ? false : true,
@@ -147,6 +149,10 @@ export function mergeConnectionSettings(
       baseUrl: overrides?.custom?.baseUrl?.trim() || defaults.custom.baseUrl,
     },
     notes: {
+      enabled:
+        typeof overrides?.notes?.enabled === "boolean"
+          ? overrides.notes.enabled
+          : defaults.notes.enabled,
       vaultPath: overrides?.notes?.vaultPath?.trim() ?? defaults.notes.vaultPath,
       subdir: overrides?.notes?.subdir?.trim() || defaults.notes.subdir,
       includeTimestamp:

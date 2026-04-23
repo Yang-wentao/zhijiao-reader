@@ -126,7 +126,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
           state.settings.codex.reasoningEffort = reasoningEffort;
         }
       },
-      getNotesReady: () => state.settings.notes.vaultPath.trim().length > 0,
+      getNotesReady: () => state.settings.notes.enabled && state.settings.notes.vaultPath.trim().length > 0,
     }),
   );
 
@@ -324,7 +324,7 @@ function buildAppConfig(state: RuntimeState) {
     maxSelectionChars: 8000,
     setupRequired: state.setupRequired || !runtime.isReady,
     connectionLabel: buildConnectionLabel(state.settings),
-    notesReady: state.settings.notes.vaultPath.trim().length > 0,
+    notesReady: state.settings.notes.enabled && state.settings.notes.vaultPath.trim().length > 0,
   };
 }
 

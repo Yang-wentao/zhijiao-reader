@@ -12,6 +12,7 @@ type PdfPaneProps = {
   activeFileUrl: string | null;
   activeFileName: string | null;
   onFileSelected: (file: File) => void;
+  onSelectionCaptured: (text: string, pageNumber: number | null) => void;
   onContextSelection: (selection: PdfContextSelection) => void;
   onTabSelected: (tabId: string) => void;
   onTabClosed: (tabId: string) => void;
@@ -23,12 +24,16 @@ export function PdfPane({
   activeFileUrl,
   activeFileName,
   onFileSelected,
+  onSelectionCaptured,
   onContextSelection,
   onTabSelected,
   onTabClosed,
 }: PdfPaneProps) {
   const [zoomLevel, setZoomLevel] = useState<number | SpecialZoomLevel>(SpecialZoomLevel.PageWidth);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Track the last selection text we auto-translated so we don't re-fire when the
+  // user clicks/right-clicks while the same selection is still on screen.
+  const lastTranslatedTextRef = useRef<string>("");
   const searchPluginInstance = searchPlugin();
 
   useEffect(() => {
@@ -36,6 +41,37 @@ export function PdfPane({
     if (!container) {
       return;
     }
+
+    // Mouseup is captured at document level so the user can release the mouse
+    // outside the PDF viewer (e.g. on the toolbar) and we still pick up the
+    // selection. We then verify the selection is anchored INSIDE the PDF before
+    // firing.
+    const handleMouseUp = (event: MouseEvent) => {
+      // Right-click handled separately (see contextmenu below); skip here so
+      // we don't double-fire.
+      if (event.button === 2) {
+        return;
+      }
+      // Defer: at the time mouseup fires, the selection is sometimes still
+      // settling (especially with PDF.js text layer overlays).
+      window.setTimeout(() => {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+          lastTranslatedTextRef.current = "";
+          return;
+        }
+        const range = selection.getRangeAt(0);
+        if (!container.contains(range.commonAncestorContainer)) {
+          return;
+        }
+        const text = selection.toString().trim();
+        if (!text || text === lastTranslatedTextRef.current) {
+          return;
+        }
+        lastTranslatedTextRef.current = text;
+        onSelectionCaptured(text, findPageNumber(range.startContainer));
+      }, 0);
+    };
 
     const handleContextMenu = (event: MouseEvent) => {
       const selection = window.getSelection();
@@ -60,9 +96,13 @@ export function PdfPane({
       });
     };
 
+    document.addEventListener("mouseup", handleMouseUp);
     container.addEventListener("contextmenu", handleContextMenu);
-    return () => container.removeEventListener("contextmenu", handleContextMenu);
-  }, [onContextSelection]);
+    return () => {
+      document.removeEventListener("mouseup", handleMouseUp);
+      container.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, [onContextSelection, onSelectionCaptured]);
 
   return (
     <div className="pdf-shell">

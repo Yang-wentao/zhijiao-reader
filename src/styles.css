@@ -939,6 +939,31 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.settings-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(31, 53, 94, 0.06);
+  font-size: 0.85rem;
+  color: #4d5b75;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 .settings-section-hint {
   margin: 4px 0 0;
   font-size: 12px;

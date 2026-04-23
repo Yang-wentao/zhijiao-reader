@@ -55,12 +55,14 @@ vi.mock("./components/PdfPane", () => ({
     tabs,
     activeTabId,
     onFileSelected,
+    onSelectionCaptured,
     onContextSelection,
     onTabSelected,
   }: {
     tabs: PdfTabSummary[];
     activeTabId: string | null;
     onFileSelected: (file: File) => void;
+    onSelectionCaptured: (text: string, pageNumber: number | null) => void;
     onContextSelection: (selection: {
       text: string;
       startPage: number | null;
@@ -89,6 +91,12 @@ vi.mock("./components/PdfPane", () => ({
           {tab.fileName}
         </button>
       ))}
+      <button
+        type="button"
+        onClick={() => onSelectionCaptured("Selected paragraph", 3)}
+      >
+        Mouseup selection
+      </button>
       <button
         type="button"
         onClick={() =>
@@ -164,6 +172,7 @@ describe("App selection flow", () => {
         baseUrl: "https://example.com/v1",
       },
       notes: {
+        enabled: false,
         vaultPath: "",
         subdir: "知交摘录",
         includeTimestamp: true,
@@ -210,7 +219,18 @@ describe("App selection flow", () => {
     streamAsk.mockReset();
   });
 
-  it("does not translate on selection until 翻译 is chosen from the right-click menu", async () => {
+  it("auto-translates the selection as soon as PdfPane reports a mouseup", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("知交文献阅读")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Mouseup selection" }));
+
+    await waitFor(() => expect(streamTranslation).toHaveBeenCalledTimes(1));
+  });
+
+  it("right-clicking opens the notes menu without firing translation", async () => {
     render(<App />);
 
     expect(await screen.findByText("知交文献阅读")).toBeInTheDocument();
@@ -218,11 +238,10 @@ describe("App selection flow", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
     fireEvent.click(await screen.findByRole("button", { name: "Right-click selection" }));
 
+    // The right-click menu shows note actions only — no translate item anymore.
+    expect(await screen.findByRole("menuitem", { name: "加入笔记（原文）" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "翻译" })).not.toBeInTheDocument();
     expect(streamTranslation).not.toHaveBeenCalled();
-
-    fireEvent.click(await screen.findByRole("menuitem", { name: "翻译" }));
-
-    await waitFor(() => expect(streamTranslation).toHaveBeenCalledTimes(1));
   });
 
   it("keeps pending note appends when the user switches PDF tabs before translation finishes", async () => {

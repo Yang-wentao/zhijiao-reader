@@ -292,61 +292,86 @@ export function ConnectionSettingsModal({
 
         <div className="settings-grid settings-notes-grid">
           <div className="settings-section-header">
-            <p className="panel-kicker">Obsidian 笔记</p>
+            <div className="settings-section-title-row">
+              <p className="panel-kicker">Obsidian 笔记</p>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  aria-label="Enable Obsidian notes"
+                  checked={settings.notes.enabled}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      notes: {
+                        ...settings.notes,
+                        enabled: event.target.checked,
+                      },
+                    })
+                  }
+                />
+                <span>{settings.notes.enabled ? "已启用" : "未启用"}</span>
+              </label>
+            </div>
             <p className="settings-section-hint">
-              划线后右键可将原文（可选含译文）追加到 vault 内的 markdown 文件。跨设备同步由 Obsidian 自身负责。
+              {settings.notes.enabled
+                ? "在 PDF 选区上右键可将原文（可选含译文）追加到 vault 内的 markdown 文件。跨设备同步由 Obsidian 自身负责。"
+                : "默认关闭。如需把选中的段落保存进 Obsidian vault，请勾选启用并填写下方路径。"}
             </p>
           </div>
-          <label className="settings-field settings-field-wide">
-            <span>Vault 绝对路径</span>
-            <input
-              aria-label="Obsidian vault path"
-              placeholder="/Users/you/Documents/ObsidianVault"
-              value={settings.notes.vaultPath}
-              onChange={(event) =>
-                onChange({
-                  ...settings,
-                  notes: {
-                    ...settings.notes,
-                    vaultPath: event.target.value,
-                  },
-                })
-              }
-            />
-          </label>
-          <label className="settings-field">
-            <span>子目录</span>
-            <input
-              aria-label="Obsidian notes subdir"
-              value={settings.notes.subdir}
-              onChange={(event) =>
-                onChange({
-                  ...settings,
-                  notes: {
-                    ...settings.notes,
-                    subdir: event.target.value,
-                  },
-                })
-              }
-            />
-          </label>
-          <label className="settings-field settings-field-checkbox">
-            <input
-              type="checkbox"
-              aria-label="Include timestamp"
-              checked={settings.notes.includeTimestamp}
-              onChange={(event) =>
-                onChange({
-                  ...settings,
-                  notes: {
-                    ...settings.notes,
-                    includeTimestamp: event.target.checked,
-                  },
-                })
-              }
-            />
-            <span>包含时间戳</span>
-          </label>
+          {settings.notes.enabled ? (
+            <>
+              <label className="settings-field settings-field-wide">
+                <span>Vault 绝对路径</span>
+                <input
+                  aria-label="Obsidian vault path"
+                  placeholder="/Users/you/Documents/ObsidianVault"
+                  value={settings.notes.vaultPath}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      notes: {
+                        ...settings.notes,
+                        vaultPath: event.target.value,
+                      },
+                    })
+                  }
+                />
+              </label>
+              <label className="settings-field">
+                <span>子目录</span>
+                <input
+                  aria-label="Obsidian notes subdir"
+                  value={settings.notes.subdir}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      notes: {
+                        ...settings.notes,
+                        subdir: event.target.value,
+                      },
+                    })
+                  }
+                />
+              </label>
+              <label className="settings-field settings-field-checkbox">
+                <input
+                  type="checkbox"
+                  aria-label="Include timestamp"
+                  checked={settings.notes.includeTimestamp}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      notes: {
+                        ...settings.notes,
+                        includeTimestamp: event.target.checked,
+                      },
+                    })
+                  }
+                />
+                <span>包含时间戳</span>
+              </label>
+            </>
+          ) : null}
         </div>
 
         <p className="settings-key-hint">

@@ -5,7 +5,6 @@ export type PdfContextMenuProps = {
   y: number;
   notesReady: boolean;
   onClose: () => void;
-  onTranslate: () => void;
   onAppendOriginal: () => void;
   onAppendWithTranslation: () => void;
 };
@@ -15,7 +14,6 @@ export function PdfContextMenu({
   y,
   notesReady,
   onClose,
-  onTranslate,
   onAppendOriginal,
   onAppendWithTranslation,
 }: PdfContextMenuProps) {
@@ -40,7 +38,7 @@ export function PdfContextMenu({
     };
   }, [onClose]);
 
-  const disabledReason = !notesReady ? "请先在 Settings 配置 Obsidian vault 路径" : null;
+  const disabledReason = !notesReady ? "请先在「设置」中启用并配置 Obsidian 笔记" : null;
 
   return (
     <div
@@ -50,17 +48,6 @@ export function PdfContextMenu({
       style={{ left: x, top: y }}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <button
-        type="button"
-        role="menuitem"
-        className="pdf-context-menu-item"
-        onClick={() => {
-          onTranslate();
-          onClose();
-        }}
-      >
-        翻译
-      </button>
       <button
         type="button"
         role="menuitem"

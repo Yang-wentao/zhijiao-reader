@@ -331,6 +331,17 @@ export default function App() {
     }
   }
 
+  function handleSelectionCaptured(text: string, pageNumber: number | null) {
+    const validation = validateSelection(text, config.maxSelectionChars);
+    if (!validation.ok) {
+      if (validation.reason === "too_long") {
+        setToast("选中的文字太长了，请缩短再试。");
+      }
+      return;
+    }
+    void handleTranslate(text, pageNumber);
+  }
+
   function handleContextSelection(selection: PdfContextSelection) {
     if (!activeTab) {
       return;
@@ -338,7 +349,7 @@ export default function App() {
     const validation = validateSelection(selection.text, config.maxSelectionChars);
     if (!validation.ok) {
       if (validation.reason === "too_long") {
-        setToast("Selected text is too long. Please select a shorter passage.");
+        setToast("选中的文字太长了，请缩短再试。");
       }
       return;
     }
@@ -347,19 +358,6 @@ export default function App() {
       selection,
       pdfName: activeTab.fileName,
     });
-  }
-
-  function handleMenuTranslate() {
-    if (!contextMenu) {
-      return;
-    }
-    const card = createSelectionCardForTab(
-      contextMenu.tabId,
-      contextMenu.selection.text,
-      contextMenu.selection.startPage,
-      "translate",
-    );
-    void runTranslation(card, contextMenu.tabId);
   }
 
   function handleAppendOriginal() {
@@ -511,6 +509,7 @@ export default function App() {
             activeFileUrl={activeTab?.fileUrl ?? null}
             activeFileName={activeTab?.fileName ?? null}
             onFileSelected={handleFileSelected}
+            onSelectionCaptured={handleSelectionCaptured}
             onContextSelection={handleContextSelection}
             onTabSelected={setActiveTabId}
             onTabClosed={handleTabClosed}
@@ -551,7 +550,6 @@ export default function App() {
           y={contextMenu.selection.y}
           notesReady={config.notesReady}
           onClose={() => setContextMenu(null)}
-          onTranslate={handleMenuTranslate}
           onAppendOriginal={handleAppendOriginal}
           onAppendWithTranslation={handleAppendWithTranslation}
         />

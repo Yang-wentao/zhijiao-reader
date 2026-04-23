@@ -93,6 +93,7 @@ export type ConnectionSettings = {
     baseUrl: string;
   };
   notes: {
+    enabled: boolean;
     vaultPath: string;
     subdir: string;
     includeTimestamp: boolean;
