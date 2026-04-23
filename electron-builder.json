@@ -24,6 +24,15 @@
     "category": "public.app-category.education",
     "icon": "resources/icons/icon.icns"
   },
+  "dmg": {
+    "title": "知交文献阅读 ${version}",
+    "icon": "resources/icons/icon.icns",
+    "window": { "width": 540, "height": 380 },
+    "contents": [
+      { "x": 140, "y": 200, "type": "file" },
+      { "x": 400, "y": 200, "type": "link", "path": "/Applications" }
+    ]
+  },
   "win": {
     "target": [
       { "target": "nsis", "arch": ["x64"] }

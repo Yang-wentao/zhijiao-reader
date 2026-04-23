@@ -122,20 +122,77 @@ npm run electron:pack
 - 前端：`http://localhost:5173`
 - 后端：`http://localhost:8787`
 
-## 发布与使用方式
+## 下载与安装（macOS 桌面版）
 
-仓库发布后，使用者有三种方式：
+> 推荐方式。从 [GitHub Releases](https://github.com/Yang-wentao/zhijiao-reader/releases) 下载对应的 DMG。
 
-1. 用一行命令安装并启动
-2. 直接克隆源码后运行 `npm run launch`
-3. 从 GitHub Releases 下载打包产物
+### 1. 选对应芯片的 DMG
+
+| Mac 类型 | 下载文件 |
+|---|---|
+| Apple Silicon（M1 / M2 / M3 / M4） | `知交文献阅读-x.y.z-arm64.dmg` |
+| Intel Mac | `知交文献阅读-x.y.z.dmg` |
+
+不知道自己的 Mac 是哪种？点屏幕左上角 Apple → 关于本机，看"芯片"那一项。
+
+### 2. 安装
+
+1. 双击 DMG 打开
+2. 把"知交文献阅读"图标**拖到 Applications 文件夹**
+3. 关闭 DMG 窗口（在 Finder 边栏右键 DMG → 推出）
+
+### 3. 第一次启动（重要！）
+
+由于本项目暂未购买 Apple Developer ID 签名，macOS 第一次会弹出**"无法打开「知交文献阅读」，因为 Apple 无法检查它是否包含恶意软件"**。这是正常现象，按下面任一方法绕过：
+
+**方法 A：右键打开（推荐）**
+1. 在 Finder 里找到 `/Applications/知交文献阅读.app`
+2. **右键** → 点"打开"
+3. 弹窗里点"打开"
+4. 之后双击就能正常启动了
+
+**方法 B：终端一行命令（适合熟悉命令行的同学）**
+```bash
+xattr -dr com.apple.quarantine "/Applications/知交文献阅读.app"
+```
+跑完直接双击就能开。
+
+> 如果你担心安全：本项目所有源码都在这个仓库公开，你可以自己检视、自己 build。我们会在攒到一定用户后申请 Apple Developer ID 真签名，那时就不会再有这个弹窗。
+
+### 4. 第一次配置
+
+应用打开后，右上角"设置"→ 选服务提供方（推荐 DeepSeek 或 SJTU API）→ 填 API key → 点"测试连接"通过 → 保存即可使用。
+
+---
+
+## 其他使用方式
+
+### 从源码运行
+
+如果你是开发者，或者想看看 / 改改代码：
+
+```bash
+git clone https://github.com/Yang-wentao/zhijiao-reader.git
+cd zhijiao-reader
+npm install
+npm run launch
+```
+
+### 一行命令安装（开发者）
+
+macOS / Linux：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.sh | bash
+```
 
 如果使用者选择 `Local Codex`，仍需要在自己的电脑上单独安装 Codex CLI；这部分不会随本项目一起分发。
 
-发布辅助文档：
+### 发布辅助文档
 
 - [GitHub Distribution](docs/github-distribution.md)
 - [Electron Packaging](docs/electron-packaging.md)
+- [App 图标设计与流水线](docs/app-icon.md)
 
 ## 当前限制
 
