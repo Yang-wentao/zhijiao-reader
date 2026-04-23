@@ -23,12 +23,12 @@
     ],
     "category": "public.app-category.education",
     "icon": "resources/icons/icon.icns",
-    "artifactName": "${productName}-${version}-${arch}-mac.${ext}"
+    "artifactName": "ZhijiaoReader-${version}-${arch}-mac.${ext}"
   },
   "dmg": {
     "title": "知交文献阅读 ${version}",
     "icon": "resources/icons/icon.icns",
-    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "artifactName": "ZhijiaoReader-${version}-${arch}.${ext}",
     "window": { "width": 540, "height": 380 },
     "contents": [
       { "x": 140, "y": 200, "type": "file" },
