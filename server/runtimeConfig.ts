@@ -18,6 +18,7 @@ export type ConnectionSettings = {
     apiKey: string;
     model: string;
     baseUrl: string;
+    thinkingMode: "enabled" | "disabled";
   };
   sjtu: {
     apiKey: string;
@@ -41,6 +42,16 @@ export type ConnectionSettings = {
     subdir: string;
     includeTimestamp: boolean;
   };
+  preferences: {
+    /**
+     * "selection" — left-click drag-select auto-translates (default, original UX).
+     * "menu"      — selection alone does nothing; user must right-click → 翻译.
+     *               Useful when the user mainly relies on right-click for the
+     *               Obsidian notes flow and doesn't want every drag to fire an
+     *               API call.
+     */
+    translationTrigger: "selection" | "menu";
+  };
 };
 
 type PartialConnectionSettings = Partial<ConnectionSettings> & {
@@ -50,6 +61,7 @@ type PartialConnectionSettings = Partial<ConnectionSettings> & {
   openai?: Partial<ConnectionSettings["openai"]>;
   custom?: Partial<ConnectionSettings["custom"]>;
   notes?: Partial<ConnectionSettings["notes"]>;
+  preferences?: Partial<ConnectionSettings["preferences"]>;
 };
 
 export type ConnectionTestInput = {
@@ -88,8 +100,9 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
     },
     deepseek: {
       apiKey: env.DEEPSEEK_API_KEY?.trim() || "",
-      model: env.DEEPSEEK_MODEL?.trim() || "deepseek-chat",
+      model: env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
       baseUrl: env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com",
+      thinkingMode: env.DEEPSEEK_THINKING_MODE === "enabled" ? "enabled" : "disabled",
     },
     sjtu: {
       apiKey: env.SJTU_API_KEY?.trim() || "",
@@ -113,6 +126,9 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
       subdir: env.OBSIDIAN_NOTES_SUBDIR?.trim() || "知交摘录",
       includeTimestamp: env.OBSIDIAN_INCLUDE_TIMESTAMP === "false" ? false : true,
     },
+    preferences: {
+      translationTrigger: env.ZHIJIAO_TRANSLATION_TRIGGER === "menu" ? "menu" : "selection",
+    },
   };
 }
 
@@ -131,6 +147,10 @@ export function mergeConnectionSettings(
       apiKey: overrides?.deepseek?.apiKey?.trim() || defaults.deepseek.apiKey,
       model: overrides?.deepseek?.model?.trim() || defaults.deepseek.model,
       baseUrl: overrides?.deepseek?.baseUrl?.trim() || defaults.deepseek.baseUrl,
+      thinkingMode:
+        overrides?.deepseek?.thinkingMode === "enabled" || overrides?.deepseek?.thinkingMode === "disabled"
+          ? overrides.deepseek.thinkingMode
+          : defaults.deepseek.thinkingMode,
     },
     sjtu: {
       apiKey: overrides?.sjtu?.apiKey?.trim() || defaults.sjtu.apiKey,
@@ -159,6 +179,13 @@ export function mergeConnectionSettings(
         typeof overrides?.notes?.includeTimestamp === "boolean"
           ? overrides.notes.includeTimestamp
           : defaults.notes.includeTimestamp,
+    },
+    preferences: {
+      translationTrigger:
+        overrides?.preferences?.translationTrigger === "menu" ||
+        overrides?.preferences?.translationTrigger === "selection"
+          ? overrides.preferences.translationTrigger
+          : defaults.preferences.translationTrigger,
     },
   };
 }

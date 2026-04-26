@@ -39,11 +39,15 @@
     "target": [
       { "target": "nsis", "arch": ["x64"] }
     ],
-    "icon": "resources/icons/icon.png"
+    "icon": "resources/icons/icon.ico",
+    "publisherName": "Yang Wentao",
+    "artifactName": "ZhijiaoReader-Setup-${version}-${arch}.${ext}"
   },
   "nsis": {
     "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+    "allowToChangeInstallationDirectory": true,
+    "perMachine": false,
+    "shortcutName": "知交文献阅读"
   },
   "linux": {
     "target": ["AppImage"],

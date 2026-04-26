@@ -142,6 +142,7 @@ describe("App selection flow", () => {
       setupRequired: false,
       connectionLabel: "Local Codex · gpt-5.4-mini · low",
       notesReady: false,
+      translationTrigger: "selection",
     });
     fetchConnectionSettings.mockResolvedValue({
       activeProvider: "codex",
@@ -152,8 +153,9 @@ describe("App selection flow", () => {
       },
       deepseek: {
         apiKey: "",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         baseUrl: "https://api.deepseek.com",
+        thinkingMode: "disabled",
       },
       sjtu: {
         apiKey: "",
@@ -176,6 +178,9 @@ describe("App selection flow", () => {
         vaultPath: "",
         subdir: "知交摘录",
         includeTimestamp: true,
+      },
+      preferences: {
+        translationTrigger: "selection",
       },
     });
     saveConnectionSettings.mockImplementation(async (settings) => ({
@@ -205,6 +210,7 @@ describe("App selection flow", () => {
             ? `SJTU API · ${settings.sjtu.model}`
           : "Local Codex · gpt-5.4-mini · low",
       notesReady: false,
+      translationTrigger: "selection",
     }));
     testConnectionSettings.mockResolvedValue({
       ok: true,
@@ -262,6 +268,7 @@ describe("App selection flow", () => {
       setupRequired: false,
       connectionLabel: "Local Codex · gpt-5.4-mini · low",
       notesReady: true,
+      translationTrigger: "selection",
     });
     let capturedHandlers: { onDelta: (chunk: string) => void; onDone: () => void } | null = null;
     streamTranslation.mockImplementationOnce(async (_card, handlers) => {
@@ -320,6 +327,7 @@ describe("App selection flow", () => {
       setupRequired: true,
       connectionLabel: "Not connected",
       notesReady: false,
+      translationTrigger: "selection",
     });
 
     render(<App />);
@@ -335,7 +343,7 @@ describe("App selection flow", () => {
     const providerSelect = await screen.findByRole("combobox", { name: "Connection provider" });
     fireEvent.change(providerSelect, { target: { value: "deepseek" } });
 
-    fireEvent.change(screen.getByLabelText("Model name"), { target: { value: "deepseek-chat" } });
+    fireEvent.change(screen.getByLabelText("Model name"), { target: { value: "deepseek-v4-flash" } });
     fireEvent.change(screen.getByLabelText("API key"), { target: { value: "deepseek-key" } });
 
     fireEvent.click(screen.getByRole("button", { name: "测试连接" }));
@@ -344,12 +352,12 @@ describe("App selection flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
 
     await waitFor(() => expect(saveConnectionSettings).toHaveBeenCalledTimes(1));
-    // The header chip now shows "DeepSeek" + the shortened model name "chat".
+    // The header chip now shows "DeepSeek" + the shortened model name "v4-flash".
     expect(screen.getByText("DeepSeek")).toBeInTheDocument();
-    expect(screen.getByText("chat")).toBeInTheDocument();
+    expect(screen.getByText("v4-flash")).toBeInTheDocument();
   });
 
-  it("shows DeepSeek model as a fixed select with recommended chat default", async () => {
+  it("shows DeepSeek model as a fixed select with v4-flash and v4-pro options", async () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "设置" }));
@@ -358,8 +366,10 @@ describe("App selection flow", () => {
     fireEvent.change(providerSelect, { target: { value: "deepseek" } });
 
     expect(await screen.findByRole("combobox", { name: "Model name" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "deepseek-chat（推荐）" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "deepseek-reasoner" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "v4-flash（推荐 · 1M 上下文）" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "v4-pro（更强 · 当前 75% 折扣）" })).toBeInTheDocument();
+    // A second dropdown lets the user toggle thinking mode independently.
+    expect(screen.getByRole("combobox", { name: "DeepSeek thinking mode" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Model name" })).not.toBeInTheDocument();
   });
 

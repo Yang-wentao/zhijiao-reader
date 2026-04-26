@@ -14,6 +14,7 @@ const preparedPath = join(iconsDir, "icon-source-prepared.png");
 const preprocessScript = join(__dirname, "preprocess-icon.mjs");
 const iconsetDir = join(iconsDir, "AppIcon.iconset");
 const icnsPath = join(iconsDir, "icon.icns");
+const icoPath = join(iconsDir, "icon.ico");
 const pngPath = join(iconsDir, "icon.png");
 
 // macOS .icns requires these exact filenames in an .iconset bundle.
@@ -68,8 +69,22 @@ console.log(`\nicns    -> ${relativeToRoot(icnsPath)}`);
 await cp(sourcePath, pngPath);
 console.log(`png     -> ${relativeToRoot(pngPath)}`);
 
+// Windows .ico: a single file containing 16/32/48/64/128/256 PNG-encoded entries.
+// Pillow handles this in one shot — no need for ImageMagick. The .ico file is
+// referenced by electron-builder for both the runtime taskbar icon and the
+// installer's setup wizard icon.
+const icoPythonScript = `
+import sys
+from PIL import Image
+src, dst = sys.argv[1], sys.argv[2]
+img = Image.open(src).convert("RGBA")
+img.save(dst, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+`;
+await execFileAsync("python3", ["-c", icoPythonScript, sourcePath, icoPath]);
+console.log(`ico     -> ${relativeToRoot(icoPath)}`);
+
 await rm(iconsetDir, { recursive: true, force: true });
-console.log("\nDone. Commit resources/icons/icon.icns and resources/icons/icon.png.");
+console.log("\nDone. Commit resources/icons/icon.icns, icon.ico, and icon.png.");
 
 async function assertMaster() {
   try {

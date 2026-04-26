@@ -132,8 +132,8 @@ npm run electron:pack
 
 | Mac 类型 | 下载文件 |
 |---|---|
-| Apple Silicon（M1 / M2 / M3 / M4） | `知交文献阅读-x.y.z-arm64.dmg` |
-| Intel Mac | `知交文献阅读-x.y.z.dmg` |
+| Apple Silicon（M1 / M2 / M3 / M4） | `ZhijiaoReader-x.y.z-arm64.dmg` |
+| Intel Mac | `ZhijiaoReader-x.y.z-x64.dmg` |
 
 不知道自己的 Mac 是哪种？点屏幕左上角 Apple → 关于本机，看"芯片"那一项。
 
@@ -164,6 +164,38 @@ xattr -dr com.apple.quarantine "/Applications/知交文献阅读.app"
 ### 4. 第一次配置
 
 应用打开后，右上角"设置"→ 选服务提供方（推荐 DeepSeek 或 SJTU API）→ 填 API key → 点"测试连接"通过 → 保存即可使用。
+
+---
+
+## 下载与安装（Windows 桌面版）
+
+> 同样从 [GitHub Releases](https://github.com/Yang-wentao/zhijiao-reader/releases) 下载安装。
+
+### 1. 下载
+
+| 系统 | 下载文件 |
+|---|---|
+| Windows 10 / 11 (x64) | `ZhijiaoReader-Setup-x.y.z-x64.exe` |
+
+### 2. 安装
+
+1. 双击 `.exe` 启动 NSIS 安装向导
+2. 选安装位置（默认在用户目录下）→ 安装
+3. 装完会在桌面 / 开始菜单里出现"知交文献阅读"快捷方式
+
+### 3. 第一次启动（重要！）
+
+跟 macOS 类似，本项目暂未购买 Windows 代码签名证书，所以**首次安装和首次启动会被 SmartScreen 拦下**：
+
+**安装时**：弹出 **"Windows 已保护你的电脑"** → 点 **"更多信息"** → 点 **"仍要运行"**
+
+**启动时**（如果还有警告）：右键应用 → "属性" → 勾选底部的 **"解除锁定"** → 确定
+
+> 如果你担心安全：本项目所有源码都在这个仓库公开，你可以自己检视、自己 build。商业代码签名证书每年 $200+，等用户量起来再考虑。
+
+### 4. 第一次配置
+
+同 macOS 步骤——右上角"设置"→ 选 provider → 填 API key → 测试连接 → 保存。
 
 ---
 

@@ -23,8 +23,12 @@ const PROVIDER_OPTIONS = [
 
 const CODEX_MODEL_OPTIONS = ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"] as const;
 const DEEPSEEK_MODEL_OPTIONS = [
-  { value: "deepseek-chat", label: "deepseek-chat（推荐）" },
-  { value: "deepseek-reasoner", label: "deepseek-reasoner" },
+  { value: "deepseek-v4-flash", label: "v4-flash（推荐 · 1M 上下文）" },
+  { value: "deepseek-v4-pro", label: "v4-pro（更强 · 当前 75% 折扣）" },
+] as const;
+const DEEPSEEK_THINKING_OPTIONS = [
+  { value: "disabled", label: "非思考（更快）" },
+  { value: "enabled", label: "深度思考（更细）" },
 ] as const;
 const SJTU_MODEL_OPTIONS = [
   { value: "deepseek-chat", label: "deepseek-chat（推荐）" },
@@ -162,29 +166,53 @@ export function ConnectionSettingsModal({
           />
         </label>
         {activeProvider === "deepseek" ? (
-          <label className="settings-field">
-            <span>模型</span>
-            <select
-              aria-label="Model name"
-              value={target.model}
-              onChange={(event) => {
-                const nextValue = event.target.value;
-                onChange({
-                  ...settings,
-                  [activeProvider]: {
-                    ...target,
-                    model: nextValue,
-                  },
-                });
-              }}
-            >
-              {DEEPSEEK_MODEL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label className="settings-field">
+              <span>模型</span>
+              <select
+                aria-label="Model name"
+                value={target.model}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  onChange({
+                    ...settings,
+                    deepseek: {
+                      ...settings.deepseek,
+                      model: nextValue,
+                    },
+                  });
+                }}
+              >
+                {DEEPSEEK_MODEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="settings-field">
+              <span>思考模式</span>
+              <select
+                aria-label="DeepSeek thinking mode"
+                value={settings.deepseek.thinkingMode}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    deepseek: {
+                      ...settings.deepseek,
+                      thinkingMode: event.target.value as "enabled" | "disabled",
+                    },
+                  })
+                }
+              >
+                {DEEPSEEK_THINKING_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
         ) : activeProvider === "sjtu" ? (
           <label className="settings-field">
             <span>模型</span>
@@ -288,6 +316,34 @@ export function ConnectionSettingsModal({
             </select>
           </label>
           {currentSection}
+        </div>
+
+        <div className="settings-grid settings-notes-grid">
+          <div className="settings-section-header">
+            <p className="panel-kicker">翻译触发</p>
+            <p className="settings-section-hint">
+              选择什么动作会让 PDF 选区进入翻译。如果你主要靠右键加入笔记，建议改为"右键菜单"以避免误选触发请求。
+            </p>
+          </div>
+          <label className="settings-field settings-field-wide">
+            <span>触发方式</span>
+            <select
+              aria-label="Translation trigger"
+              value={settings.preferences.translationTrigger}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  preferences: {
+                    ...settings.preferences,
+                    translationTrigger: event.target.value as "selection" | "menu",
+                  },
+                })
+              }
+            >
+              <option value="selection">选中文字 → 自动翻译（推荐）</option>
+              <option value="menu">必须右键 → 翻译（不会自动）</option>
+            </select>
+          </label>
         </div>
 
         <div className="settings-grid settings-notes-grid">

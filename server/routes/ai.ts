@@ -24,6 +24,7 @@ type RouteOptions = {
   setModel?: (model: string) => void;
   setReasoningEffort?: (reasoningEffort: "low" | "medium" | "high") => void;
   getNotesReady?: () => boolean;
+  getTranslationTrigger?: () => "selection" | "menu";
 };
 
 const MAX_SELECTION_CHARS = 8000;
@@ -181,6 +182,7 @@ function buildConfigResponse(options: RouteOptions) {
     setupRequired: options.getSetupRequired(),
     connectionLabel: options.getConnectionLabel(),
     notesReady: options.getNotesReady ? options.getNotesReady() : false,
+    translationTrigger: options.getTranslationTrigger ? options.getTranslationTrigger() : "selection",
   };
 }
 

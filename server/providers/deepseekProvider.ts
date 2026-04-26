@@ -2,15 +2,19 @@ import OpenAI from "openai";
 import { buildAskMessages, buildTranslationMessages } from "../prompts.js";
 import type { AIProvider, AskInput, ChatMessage, TranslationInput } from "./types.js";
 
+export type DeepSeekThinkingMode = "enabled" | "disabled";
+
 type ProviderOptions = {
   apiKey: string;
   model: string;
   baseURL?: string;
+  thinkingMode?: DeepSeekThinkingMode;
 };
 
 export class DeepSeekProvider implements AIProvider {
   private client: OpenAI;
   private model: string;
+  private thinkingMode: DeepSeekThinkingMode;
 
   constructor(options: ProviderOptions) {
     this.client = new OpenAI({
@@ -19,6 +23,7 @@ export class DeepSeekProvider implements AIProvider {
       timeout: 45_000,
     });
     this.model = options.model;
+    this.thinkingMode = options.thinkingMode ?? "disabled";
   }
 
   async streamTranslation(input: TranslationInput): Promise<AsyncIterable<string>> {
@@ -36,18 +41,33 @@ export class DeepSeekProvider implements AIProvider {
     this.model = model;
   }
 
+  setThinkingMode(mode: DeepSeekThinkingMode) {
+    this.thinkingMode = mode;
+  }
+
   private async streamMessages(messages: ChatMessage[], temperature: number): Promise<AsyncIterable<string>> {
-    const stream = await this.client.chat.completions.create({
+    // DeepSeek v4 series: thinking mode is toggled via a top-level `thinking` field
+    // in the request body, not the model name. The OpenAI Node SDK passes any
+    // unknown body fields through to the upstream API verbatim, so we just include
+    // it on the create() params (cast through unknown for the strict type check).
+    // When thinking is enabled the model emits chain-of-thought into
+    // reasoning_content; we ignore that and only stream choices[0].delta.content.
+    const isThinking = this.thinkingMode === "enabled";
+    const params = {
       model: this.model,
-      temperature: this.model === "deepseek-reasoner" ? undefined : temperature,
+      temperature: isThinking ? undefined : temperature,
       stream: true,
       messages: messages.map((message) => ({
         role: message.role === "developer" ? "system" : message.role,
         content: message.content,
       })),
-    });
+      thinking: { type: this.thinkingMode },
+    };
+    const stream = await this.client.chat.completions.create(
+      params as unknown as Parameters<typeof this.client.chat.completions.create>[0],
+    );
 
-    return this.extractTextStream(stream);
+    return this.extractTextStream(stream as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>);
   }
 
   private async *extractTextStream(

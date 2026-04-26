@@ -40,6 +40,7 @@ const DEFAULT_CONFIG: AppConfig = {
   setupRequired: false,
   connectionLabel: "Not connected",
   notesReady: false,
+  translationTrigger: "selection",
 };
 
 type PendingNoteAppend = {
@@ -332,6 +333,13 @@ export default function App() {
   }
 
   function handleSelectionCaptured(text: string, pageNumber: number | null) {
+    // When the user has switched to "menu" trigger mode, raw selections never
+    // fire translation — only the right-click menu does. This keeps users who
+    // rely on right-click for the Obsidian flow from burning API calls on
+    // every drag-select.
+    if (config.translationTrigger === "menu") {
+      return;
+    }
     const validation = validateSelection(text, config.maxSelectionChars);
     if (!validation.ok) {
       if (validation.reason === "too_long") {
@@ -358,6 +366,19 @@ export default function App() {
       selection,
       pdfName: activeTab.fileName,
     });
+  }
+
+  function handleMenuTranslate() {
+    if (!contextMenu) {
+      return;
+    }
+    const card = createSelectionCardForTab(
+      contextMenu.tabId,
+      contextMenu.selection.text,
+      contextMenu.selection.startPage,
+      "translate",
+    );
+    void runTranslation(card, contextMenu.tabId);
   }
 
   function handleAppendOriginal() {
@@ -549,7 +570,9 @@ export default function App() {
           x={contextMenu.selection.x}
           y={contextMenu.selection.y}
           notesReady={config.notesReady}
+          showTranslate={config.translationTrigger === "menu"}
           onClose={() => setContextMenu(null)}
+          onTranslate={handleMenuTranslate}
           onAppendOriginal={handleAppendOriginal}
           onAppendWithTranslation={handleAppendWithTranslation}
         />

@@ -62,6 +62,7 @@ export type AppConfig = {
   setupRequired: boolean;
   connectionLabel: string;
   notesReady: boolean;
+  translationTrigger: "selection" | "menu";
 };
 
 export type ConnectionSettings = {
@@ -75,6 +76,7 @@ export type ConnectionSettings = {
     apiKey: string;
     model: string;
     baseUrl: string;
+    thinkingMode: "enabled" | "disabled";
   };
   sjtu: {
     apiKey: string;
@@ -97,6 +99,9 @@ export type ConnectionSettings = {
     vaultPath: string;
     subdir: string;
     includeTimestamp: boolean;
+  };
+  preferences: {
+    translationTrigger: "selection" | "menu";
   };
 };
 

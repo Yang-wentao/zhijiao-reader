@@ -127,6 +127,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
         }
       },
       getNotesReady: () => state.settings.notes.enabled && state.settings.notes.vaultPath.trim().length > 0,
+      getTranslationTrigger: () => state.settings.preferences.translationTrigger,
     }),
   );
 
@@ -246,11 +247,12 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
             apiKey: settings.deepseek.apiKey,
             model: settings.deepseek.model,
             baseURL: settings.deepseek.baseUrl,
+            thinkingMode: settings.deepseek.thinkingMode,
           })
         : createUnavailableProvider("DEEPSEEK_API_KEY is missing."),
       isReady: deepseekReady,
       model: settings.deepseek.model,
-      modelOptions: ["deepseek-chat", "deepseek-reasoner"],
+      modelOptions: ["deepseek-v4-flash", "deepseek-v4-pro"],
       canSwitchModels: true,
       reasoningEffort: null,
       reasoningEffortOptions: [],
@@ -325,6 +327,7 @@ function buildAppConfig(state: RuntimeState) {
     setupRequired: state.setupRequired || !runtime.isReady,
     connectionLabel: buildConnectionLabel(state.settings),
     notesReady: state.settings.notes.enabled && state.settings.notes.vaultPath.trim().length > 0,
+    translationTrigger: state.settings.preferences.translationTrigger,
   };
 }
 

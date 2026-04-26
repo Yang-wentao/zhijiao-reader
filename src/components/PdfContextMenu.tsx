@@ -4,7 +4,14 @@ export type PdfContextMenuProps = {
   x: number;
   y: number;
   notesReady: boolean;
+  /**
+   * When true, the menu shows a "翻译" item at the top. We render it only when
+   * the user has switched their translation trigger to "menu" mode — otherwise
+   * selections auto-translate and a redundant menu item just creates noise.
+   */
+  showTranslate: boolean;
   onClose: () => void;
+  onTranslate: () => void;
   onAppendOriginal: () => void;
   onAppendWithTranslation: () => void;
 };
@@ -13,7 +20,9 @@ export function PdfContextMenu({
   x,
   y,
   notesReady,
+  showTranslate,
   onClose,
+  onTranslate,
   onAppendOriginal,
   onAppendWithTranslation,
 }: PdfContextMenuProps) {
@@ -48,6 +57,19 @@ export function PdfContextMenu({
       style={{ left: x, top: y }}
       onContextMenu={(event) => event.preventDefault()}
     >
+      {showTranslate ? (
+        <button
+          type="button"
+          role="menuitem"
+          className="pdf-context-menu-item"
+          onClick={() => {
+            onTranslate();
+            onClose();
+          }}
+        >
+          翻译
+        </button>
+      ) : null}
       <button
         type="button"
         role="menuitem"
