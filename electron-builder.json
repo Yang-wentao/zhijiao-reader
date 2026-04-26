@@ -40,8 +40,10 @@
       { "target": "nsis", "arch": ["x64"] }
     ],
     "icon": "resources/icons/icon.ico",
-    "publisherName": "Yang Wentao",
-    "artifactName": "ZhijiaoReader-Setup-${version}-${arch}.${ext}"
+    "artifactName": "ZhijiaoReader-Setup-${version}-${arch}.${ext}",
+    "signtoolOptions": {
+      "publisherName": "Yang Wentao"
+    }
   },
   "nsis": {
     "oneClick": false,
