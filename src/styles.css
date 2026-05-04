@@ -166,14 +166,6 @@ textarea {
   min-width: 92px;
 }
 
-.pdf-file-name {
-  color: #445067;
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .pdf-viewer-area {
   flex: 1;
   overflow: auto;
@@ -328,6 +320,142 @@ textarea {
 
 .assistant-panel {
   overflow: hidden;
+  position: relative;
+  /* Defaults overridden by an inline style on .assistant-panel that reflects
+     the user's chosen font level + line-height level (see AssistantPanel.tsx).
+     Kept here as fallback for unit tests that render with no inline style. */
+  --right-font-size: 16px;
+  --right-line-height: 1.7;
+}
+
+.assistant-panel .card-stack,
+.assistant-panel .empty-state {
+  font-size: var(--right-font-size);
+  line-height: var(--right-line-height);
+}
+
+/* ====== Right-pane typography popover (字号 + 行距) ====== */
+.typography-control {
+  position: relative;
+}
+
+.typography-trigger {
+  min-width: 36px;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 4px 10px;
+}
+
+.typography-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 240px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(31, 35, 41, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(19, 33, 68, 0.18);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10;
+}
+
+.typography-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.typography-row-label {
+  flex: 0 0 36px;
+  font-size: 0.86rem;
+  color: #4d5b75;
+  font-weight: 600;
+}
+
+.typography-row-value {
+  flex: 0 0 60px;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.86rem;
+  text-align: center;
+  color: #1f355e;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The − / + buttons. Force a square-ish hit area + perfectly center the glyph
+   so they don't visually float off-axis inside the rounded pill background. */
+.typography-step {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 28px;
+  min-width: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.typography-reset {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #66748f;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.typography-reset:hover:not(:disabled) {
+  background: rgba(31, 53, 94, 0.06);
+  color: #1f355e;
+}
+
+.typography-reset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Floating "back to top" button shown when the user has scrolled the card
+   stack down past SCROLL_TOP_THRESHOLD. Sits inside .assistant-panel which is
+   position: relative, so it pins to the right pane regardless of split ratio. */
+.scroll-to-top-fab {
+  position: absolute;
+  right: 18px;
+  bottom: 22px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(31, 53, 94, 0.9);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 22px rgba(19, 33, 68, 0.28);
+  transition: transform 0.12s ease, background-color 0.12s ease;
+  z-index: 5;
+}
+
+.scroll-to-top-fab:hover {
+  transform: translateY(-2px);
+  background: rgba(31, 53, 94, 1);
+}
+
+.scroll-to-top-fab:focus-visible {
+  outline: 2px solid rgba(102, 136, 194, 0.7);
+  outline-offset: 2px;
 }
 
 .card-stack {
@@ -451,23 +579,40 @@ textarea {
   grid-area: selection;
   font-size: 0.96rem;
   line-height: 1.38;
-  white-space: pre-wrap;
+  /* `normal` collapses the hard newlines that PDF copy-paste inevitably leaves
+     in the middle of sentences (column-wrap artefacts). The result is a single
+     readable paragraph that the user can scroll. */
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 
+/* Original passage preview shown at the top of every card.
+   - Long passages stay limited in height (so the card doesn't push the
+     translation off-screen) but become independently scrollable so the user
+     can read the full source.
+   - Subtle inset border on hover hints "you can scroll inside me". */
 .card-selection-preview {
   position: relative;
-  max-height: 10.4em;
-  overflow: hidden;
-  padding-right: 6px;
+  max-height: 14em;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  /* Slim scrollbar that doesn't fight the soft cream card background. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(31, 53, 94, 0.25) transparent;
 }
 
-.card-selection-preview::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 2.8em;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.94));
+.card-selection-preview::-webkit-scrollbar {
+  width: 6px;
+}
+
+.card-selection-preview::-webkit-scrollbar-thumb {
+  background: rgba(31, 53, 94, 0.25);
+  border-radius: 3px;
+}
+
+.card-selection-preview::-webkit-scrollbar-thumb:hover {
+  background: rgba(31, 53, 94, 0.4);
 }
 
 .secondary-button,
@@ -735,6 +880,81 @@ textarea {
 
 .empty-state-panel {
   margin-top: 60px;
+}
+
+/* ====== PDF drop zone ====== */
+/* The empty-state hero shown in the left pane when no PDF is open. Doubles as a
+   visible drop target so users discover that drag-and-drop works without
+   reading the README. */
+.pdf-dropzone {
+  margin: auto;
+  width: min(560px, 88%);
+  padding: 56px 32px;
+  border: 2px dashed rgba(31, 53, 94, 0.22);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.pdf-dropzone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.pdf-dropzone-icon {
+  font-size: 56px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.pdf-dropzone h2 {
+  margin: 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 1.4rem;
+  color: #1f355e;
+}
+
+.pdf-dropzone p {
+  margin: 0;
+  color: #4d5b75;
+  font-size: 0.96rem;
+}
+
+.pdf-dropzone-hint {
+  font-size: 0.84rem;
+  color: #7b8699;
+  margin-top: 6px;
+}
+
+.upload-button-large {
+  padding: 14px 28px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 4px;
+  box-shadow: 0 6px 18px rgba(19, 33, 68, 0.18);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.upload-button-large:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(19, 33, 68, 0.24);
+}
+
+/* While the user is dragging a file over the left pane, give clear feedback.
+   The whole pane subtly highlights, and the drop zone box pulses bigger. */
+.pdf-shell.dragging-file .pdf-dropzone,
+.pdf-dropzone.active {
+  border-color: rgba(31, 53, 94, 0.65);
+  border-style: solid;
+  background: rgba(102, 136, 194, 0.08);
+  transform: scale(1.015);
+}
+
+.pdf-shell.dragging-file .pdf-viewer-area {
+  background: rgba(102, 136, 194, 0.04);
 }
 
 .empty-state-tips {

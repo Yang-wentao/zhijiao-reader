@@ -528,7 +528,6 @@ export default function App() {
             tabs={tabs.map((tab) => ({ id: tab.id, fileName: tab.fileName }))}
             activeTabId={activeTabId}
             activeFileUrl={activeTab?.fileUrl ?? null}
-            activeFileName={activeTab?.fileName ?? null}
             onFileSelected={handleFileSelected}
             onSelectionCaptured={handleSelectionCaptured}
             onContextSelection={handleContextSelection}

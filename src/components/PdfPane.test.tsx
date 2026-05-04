@@ -11,7 +11,6 @@ describe("PdfPane", () => {
         tabs={[]}
         activeTabId={null}
         activeFileUrl={null}
-        activeFileName={null}
         onFileSelected={vi.fn()}
         onSelectionCaptured={vi.fn()}
         onContextSelection={vi.fn()}
@@ -21,7 +20,9 @@ describe("PdfPane", () => {
     );
 
     expect(screen.getByText("打开 PDF")).toBeInTheDocument();
-    expect(screen.getByText("打开一篇 PDF 开始阅读")).toBeInTheDocument();
+    // The empty-state hero is now a drop zone with a clearer CTA + a fallback button.
+    expect(screen.getByText("把 PDF 拖到这里")).toBeInTheDocument();
+    expect(screen.getByText("选择 PDF 文件")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom out" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
     expect(errorSpy).not.toHaveBeenCalled();
@@ -41,7 +42,6 @@ describe("PdfPane", () => {
         ]}
         activeTabId="tab-1"
         activeFileUrl={null}
-        activeFileName="paper-a.pdf"
         onFileSelected={vi.fn()}
         onSelectionCaptured={vi.fn()}
         onContextSelection={vi.fn()}

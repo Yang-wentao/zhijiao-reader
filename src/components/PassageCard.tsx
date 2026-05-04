@@ -269,5 +269,27 @@ function normalizeMathMarkdown(content: string) {
     .replace(/\\\\\[((?:.|\n)+?)\\\\\]/g, (_, math) => `$$${math.trim()}$$`)
     .replace(/\\\\\(((?:.|\n)+?)\\\\\)/g, (_, math) => `$${math.trim()}$`)
     .replace(/\\\[((?:.|\n)+?)\\\]/g, (_, math) => `$$${math.trim()}$$`)
-    .replace(/\\\(((?:.|\n)+?)\\\)/g, (_, math) => `$${math.trim()}$`);
+    .replace(/\\\(((?:.|\n)+?)\\\)/g, (_, math) => `$${math.trim()}$`)
+    .replace(BARE_TAG_LINE_REGEX, (_, line) => `$$\n${line.trim()}\n$$`)
+    .replace(SINGLE_LINE_DISPLAY_MATH_REGEX, (_, body) => `\n\n$$\n${body.trim()}\n$$\n\n`);
 }
+
+// Models occasionally output a display equation that uses \tag{...} but forget
+// to wrap it in $$...$$. The line ends up rendered as raw LaTeX text. As a
+// safety net, find single lines that:
+//   - contain \tag{...}
+//   - have NO $ characters at all (so we know they are not already inside math)
+// and wrap them in $$...$$ at display time. The line bound to a single line
+// (no newline allowed in the match) keeps us from accidentally wrapping
+// surrounding prose.
+const BARE_TAG_LINE_REGEX = /^([^$\n]*\\tag\{[^}]+\}[^$\n]*)$/gm;
+
+// remark-math only treats $$..$$ as DISPLAY mode (the mode where \tag{} is
+// allowed) when the $$ markers are on their own lines. A single-line block
+// like `$$ X = Y \tag{1} $$` gets parsed as INLINE math, then KaTeX errors on
+// \tag and renders the source in red. Force every $$..$$ block into the
+// canonical multi-line form so display mode kicks in.
+//   $$ X = Y \tag{1} $$   →   \n\n$$\nX = Y \tag{1}\n$$\n\n
+// Surrounding the block with blank lines also guarantees that splitParagraphs
+// will keep it as its own paragraph, so the renderer sees it cleanly.
+const SINGLE_LINE_DISPLAY_MATH_REGEX = /\$\$([^\n$]+?)\$\$/g;

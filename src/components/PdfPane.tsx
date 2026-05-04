@@ -10,7 +10,6 @@ type PdfPaneProps = {
   tabs: PdfTabSummary[];
   activeTabId: string | null;
   activeFileUrl: string | null;
-  activeFileName: string | null;
   onFileSelected: (file: File) => void;
   onSelectionCaptured: (text: string, pageNumber: number | null) => void;
   onContextSelection: (selection: PdfContextSelection) => void;
@@ -22,7 +21,6 @@ export function PdfPane({
   tabs,
   activeTabId,
   activeFileUrl,
-  activeFileName,
   onFileSelected,
   onSelectionCaptured,
   onContextSelection,
@@ -30,11 +28,56 @@ export function PdfPane({
   onTabClosed,
 }: PdfPaneProps) {
   const [zoomLevel, setZoomLevel] = useState<number | SpecialZoomLevel>(SpecialZoomLevel.PageWidth);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Track the last selection text we auto-translated so we don't re-fire when the
   // user clicks/right-clicks while the same selection is still on screen.
   const lastTranslatedTextRef = useRef<string>("");
+  // Counts nested dragenter/dragleave so we don't flicker when the cursor moves
+  // between child elements inside the drop target.
+  const dragDepthRef = useRef(0);
   const searchPluginInstance = searchPlugin();
+
+  function ingestPdfFiles(fileList: FileList | File[] | null | undefined) {
+    if (!fileList) {
+      return;
+    }
+    const files = Array.from(fileList).filter(
+      (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"),
+    );
+    for (const file of files) {
+      onFileSelected(file);
+    }
+  }
+
+  // Drag-and-drop: dropping a .pdf onto the left pane opens it in a NEW tab.
+  // The handlers live on the outer .pdf-shell so users can drop anywhere on the
+  // left side, including the empty-state hero area when no PDF is open yet.
+  function handleDragEnter(event: React.DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDraggingFile(true);
+  }
+  function handleDragOver(event: React.DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }
+  function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDraggingFile(false);
+    }
+  }
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDraggingFile(false);
+    ingestPdfFiles(event.dataTransfer.files);
+  }
 
   useEffect(() => {
     const container = containerRef.current;
@@ -105,7 +148,13 @@ export function PdfPane({
   }, [onContextSelection, onSelectionCaptured]);
 
   return (
-    <div className="pdf-shell">
+    <div
+      className={`pdf-shell ${isDraggingFile ? "dragging-file" : ""}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="pdf-toolbar">
         <label className="upload-button">
           <input
@@ -113,10 +162,7 @@ export function PdfPane({
             accept="application/pdf"
             multiple
             onChange={(event) => {
-              const files = Array.from(event.target.files ?? []);
-              for (const file of files) {
-                onFileSelected(file);
-              }
+              ingestPdfFiles(event.target.files);
               event.currentTarget.value = "";
             }}
           />
@@ -149,7 +195,9 @@ export function PdfPane({
           ))}
         </div>
         <div className="pdf-toolbar-meta">
-          <span className="pdf-file-name">{activeFileName ?? "未打开 PDF"}</span>
+          {/* The active PDF is already indicated by the dark/highlighted tab in
+              the tab strip — repeating the filename here just steals horizontal
+              room from the tab strip. Keep the zoom + search controls only. */}
           <div className="zoom-controls">
             <button
               type="button"
@@ -183,9 +231,27 @@ export function PdfPane({
       </div>
       <div ref={containerRef} className="pdf-viewer-area">
         {!activeFileUrl ? (
-          <div className="empty-state">
-            <h2>打开一篇 PDF 开始阅读</h2>
-            <p>建议使用文字可选的 PDF；扫描图片版 PDF 暂不支持。</p>
+          <div className={`pdf-dropzone ${isDraggingFile ? "active" : ""}`}>
+            <div className="pdf-dropzone-inner">
+              <div className="pdf-dropzone-icon" aria-hidden="true">📄</div>
+              <h2>把 PDF 拖到这里</h2>
+              <p>或点击下方按钮选择文件</p>
+              <label className="upload-button upload-button-large">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  onChange={(event) => {
+                    ingestPdfFiles(event.target.files);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <span>选择 PDF 文件</span>
+              </label>
+              <p className="pdf-dropzone-hint">
+                建议使用文字可选的 PDF；扫描图片版 PDF 暂不支持。
+              </p>
+            </div>
           </div>
         ) : (
           <Worker workerUrl={workerUrl}>
