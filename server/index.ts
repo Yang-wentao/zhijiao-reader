@@ -124,6 +124,8 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
         getActiveRuntime(state).setReasoningEffort?.(reasoningEffort);
         if (state.activeProviderName === "codex") {
           state.settings.codex.reasoningEffort = reasoningEffort;
+        } else if (state.activeProviderName === "openai") {
+          state.settings.openai.reasoningEffort = reasoningEffort;
         }
       },
       getNotesReady: () => state.settings.notes.enabled && state.settings.notes.vaultPath.trim().length > 0,
@@ -225,22 +227,42 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
         this.reasoningEffort = nextEffort;
       },
     },
-    openai: {
-      provider: openaiReady
+    openai: (() => {
+      const openaiProvider = openaiReady
         ? new OpenAIProvider({
             apiKey: settings.openai.apiKey,
             model: settings.openai.model,
             baseURL: settings.openai.baseUrl,
+            reasoningEffort: settings.openai.reasoningEffort,
           })
-        : createUnavailableProvider("OPENAI_API_KEY is missing."),
-      isReady: openaiReady,
-      model: settings.openai.model,
-      modelOptions: [settings.openai.model],
-      canSwitchModels: true,
-      reasoningEffort: null,
-      reasoningEffortOptions: [],
-      canSwitchReasoningEffort: false,
-    },
+        : null;
+      // Curated dropdown — keeps the user's currently saved model visible even
+      // if it isn't in the curated list (e.g. a legacy "gpt-4o" or "gpt-5.4-mini"
+      // config). gpt-5.3-codex-spark is the curated "fast" option in place of
+      // gpt-5.4-mini, which has been observed to be sluggish on chaoye.xyz.
+      const baseModelOptions = ["gpt-5.5", "gpt-5.4", "gpt-5.3-codex-spark"];
+      const modelOptions = baseModelOptions.includes(settings.openai.model)
+        ? baseModelOptions
+        : [settings.openai.model, ...baseModelOptions];
+      return {
+        provider: openaiProvider ?? createUnavailableProvider("OPENAI_API_KEY is missing."),
+        isReady: openaiReady,
+        model: settings.openai.model,
+        modelOptions,
+        canSwitchModels: true,
+        reasoningEffort: settings.openai.reasoningEffort,
+        reasoningEffortOptions: ["low", "medium", "high"] as ReasoningEffort[],
+        canSwitchReasoningEffort: true,
+        setModel(nextModel: string) {
+          openaiProvider?.setModel(nextModel);
+          this.model = nextModel;
+        },
+        setReasoningEffort(nextEffort: ReasoningEffort) {
+          openaiProvider?.setReasoningEffort(nextEffort);
+          this.reasoningEffort = nextEffort;
+        },
+      };
+    })(),
     deepseek: {
       provider: deepseekReady
         ? new DeepSeekProvider({

@@ -7,7 +7,6 @@ type AssistantPanelProps = {
   provider: "openai" | "codex" | "deepseek" | "sjtu" | "custom";
   connectionLabel: string;
   model: string;
-  reasoningEffort: "low" | "medium" | "high" | null;
   isUpdatingModel: boolean;
   questionActionLabel: string;
   onOpenSettings: () => void;
@@ -22,8 +21,8 @@ type AssistantPanelProps = {
 // rather than raw px so future tweaks to the visual scale only touch this file.
 const FONT_SIZE_LEVELS = [12, 13, 14, 15, 16, 17, 18, 20] as const;
 const LINE_HEIGHT_LEVELS = [1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1] as const;
-const DEFAULT_FONT_LEVEL = 4; // → 16px
-const DEFAULT_LINE_LEVEL = 4; // → 1.6
+const DEFAULT_FONT_LEVEL = 3; // → 15px
+const DEFAULT_LINE_LEVEL = 3; // → 1.5
 const FONT_LEVEL_STORAGE_KEY = "zhijiao-right-font-level";
 const LINE_LEVEL_STORAGE_KEY = "zhijiao-right-line-level";
 const SCROLL_TOP_THRESHOLD = 200;
@@ -33,7 +32,6 @@ export function AssistantPanel({
   provider,
   connectionLabel,
   model,
-  reasoningEffort,
   isUpdatingModel,
   questionActionLabel,
   onOpenSettings,
@@ -169,11 +167,13 @@ export function AssistantPanel({
             <div
               className="model-chip-row model-chip-row-compact"
               aria-label={`当前连接：${formatProviderLabel(provider)} · ${model}`}
+              // The full connection label (incl. reasoning effort) lives in the
+              // hover tooltip so curious users can still see it without the
+              // chip taking up two lines on a narrow right pane.
               title={connectionLabel}
             >
               <span className="model-provider">{formatProviderLabel(provider)}</span>
               <strong className="model-value">{shortenModelName(provider, model)}</strong>
-              {reasoningEffort ? <strong className="model-value model-effort">{reasoningEffort}</strong> : null}
             </div>
             <button type="button" className="secondary-button" onClick={onOpenSettings} disabled={isUpdatingModel}>
               设置

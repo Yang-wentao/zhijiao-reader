@@ -164,8 +164,9 @@ describe("App selection flow", () => {
       },
       openai: {
         apiKey: "",
-        model: "gpt-4o",
+        model: "gpt-5.4-mini",
         baseUrl: "https://api.openai.com/v1",
+        reasoningEffort: "medium",
       },
       custom: {
         label: "Custom API",

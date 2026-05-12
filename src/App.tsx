@@ -138,9 +138,31 @@ export default function App() {
       fileName: file.name,
       fileUrl: URL.createObjectURL(file),
       cards: [],
+      lastPageIndex: 0,
+      lastScrollTop: 0,
     };
     setTabs((current) => [...current, nextTab]);
     setActiveTabId(nextTab.id);
+  }
+
+  function handleTabPageIndexChange(tabId: string, pageIndex: number) {
+    setTabs((current) =>
+      current.map((tab) =>
+        tab.id === tabId && tab.lastPageIndex !== pageIndex
+          ? { ...tab, lastPageIndex: pageIndex }
+          : tab,
+      ),
+    );
+  }
+
+  function handleTabScrollTopChange(tabId: string, scrollTop: number) {
+    setTabs((current) =>
+      current.map((tab) =>
+        tab.id === tabId && tab.lastScrollTop !== scrollTop
+          ? { ...tab, lastScrollTop: scrollTop }
+          : tab,
+      ),
+    );
   }
 
   function dispatchCardActionForTab(tabId: string, action: Parameters<typeof cardsReducer>[1]) {
@@ -525,14 +547,21 @@ export default function App() {
         onRatioChange={setRatio}
         left={
           <PdfPane
-            tabs={tabs.map((tab) => ({ id: tab.id, fileName: tab.fileName }))}
+            tabs={tabs.map((tab) => ({
+              id: tab.id,
+              fileName: tab.fileName,
+              fileUrl: tab.fileUrl,
+              lastPageIndex: tab.lastPageIndex,
+              lastScrollTop: tab.lastScrollTop,
+            }))}
             activeTabId={activeTabId}
-            activeFileUrl={activeTab?.fileUrl ?? null}
             onFileSelected={handleFileSelected}
             onSelectionCaptured={handleSelectionCaptured}
             onContextSelection={handleContextSelection}
             onTabSelected={setActiveTabId}
             onTabClosed={handleTabClosed}
+            onTabPageIndexChange={handleTabPageIndexChange}
+            onTabScrollTopChange={handleTabScrollTopChange}
           />
         }
         right={
@@ -541,7 +570,6 @@ export default function App() {
             provider={config.provider}
             connectionLabel={config.connectionLabel}
             model={config.model}
-            reasoningEffort={config.reasoningEffort}
             isUpdatingModel={isSavingConnection || isTestingConnection}
             questionActionLabel={config.questionActionLabel}
             onOpenSettings={() => void openSettingsModal()}

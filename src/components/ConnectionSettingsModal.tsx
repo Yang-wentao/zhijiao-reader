@@ -37,6 +37,26 @@ const SJTU_MODEL_OPTIONS = [
   { value: "minimax-m2.5", label: "minimax-m2.5" },
   { value: "qwen3coder", label: "qwen3coder" },
 ] as const;
+const OPENAI_MODEL_OPTIONS = [
+  { value: "gpt-5.5", label: "gpt-5.5（最强）" },
+  { value: "gpt-5.4", label: "gpt-5.4（平衡）" },
+  { value: "gpt-5.3-codex-spark", label: "gpt-5.3-codex-spark（快速）" },
+] as const;
+const OPENAI_REASONING_OPTIONS = [
+  { value: "low", label: "低（最快）" },
+  { value: "medium", label: "中（平台默认）" },
+  { value: "high", label: "高（最慢但更细致）" },
+] as const;
+
+function isOpenAIReasoningModel(model: string): boolean {
+  const lower = model.toLowerCase();
+  return (
+    lower.startsWith("gpt-5") ||
+    lower.startsWith("o1") ||
+    lower.startsWith("o3") ||
+    lower.startsWith("o4")
+  );
+}
 
 export function ConnectionSettingsModal({
   isOpen,
@@ -237,18 +257,76 @@ export function ConnectionSettingsModal({
               ))}
             </select>
           </label>
+        ) : activeProvider === "openai" ? (
+          <>
+            <label className="settings-field">
+              <span>模型</span>
+              <select
+                aria-label="Model name"
+                value={settings.openai.model}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  onChange({
+                    ...settings,
+                    openai: {
+                      ...settings.openai,
+                      model: nextValue,
+                    },
+                  });
+                }}
+              >
+                {/* If the user has a saved value that isn't in the curated list
+                    (e.g. legacy "gpt-4o"), surface it so the dropdown still
+                    reflects current state instead of going blank. */}
+                {!OPENAI_MODEL_OPTIONS.some((option) => option.value === settings.openai.model) ? (
+                  <option value={settings.openai.model}>{settings.openai.model}（自定义）</option>
+                ) : null}
+                {OPENAI_MODEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {isOpenAIReasoningModel(settings.openai.model) ? (
+              <label className="settings-field">
+                <span>推理强度</span>
+                <select
+                  aria-label="OpenAI reasoning effort"
+                  value={settings.openai.reasoningEffort}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      openai: {
+                        ...settings.openai,
+                        reasoningEffort: event.target.value as "low" | "medium" | "high",
+                      },
+                    })
+                  }
+                >
+                  {OPENAI_REASONING_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </>
         ) : (
+          // The only remaining provider in this branch is "custom" — deepseek,
+          // sjtu, and openai all have their own dedicated UI above.
           <label className="settings-field">
             <span>模型</span>
             <input
               aria-label="Model name"
-              value={target.model}
+              value={settings.custom.model}
               onChange={(event) => {
                 const nextValue = event.target.value;
                 onChange({
                   ...settings,
-                  [activeProvider]: {
-                    ...target,
+                  custom: {
+                    ...settings.custom,
                     model: nextValue,
                   },
                 });

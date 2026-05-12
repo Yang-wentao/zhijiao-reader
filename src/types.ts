@@ -26,9 +26,22 @@ export type PdfTab = {
   fileName: string;
   fileUrl: string;
   cards: PassageCard[];
+  // Zero-based page index the user was last on. Restored as the Viewer's
+  // `initialPage`, gets the document roughly to the right page on remount.
+  lastPageIndex: number;
+  // Exact pixel scrollTop within the Viewer's scroll container. Applied
+  // AFTER `initialPage` jumps so the user lands at the same vertical
+  // position within the page they were reading — not just the page top.
+  lastScrollTop: number;
 };
 
-export type PdfTabSummary = Pick<PdfTab, "id" | "fileName">;
+// PdfPane keeps a per-tab Viewer alive in memory (one Viewer per open PDF,
+// hidden via CSS when inactive). Each Viewer needs its file URL, plus the
+// saved scroll position to apply on initial mount.
+export type PdfTabSummary = Pick<
+  PdfTab,
+  "id" | "fileName" | "fileUrl" | "lastPageIndex" | "lastScrollTop"
+>;
 
 export type SelectionOverlay = {
   text: string;
@@ -87,6 +100,7 @@ export type ConnectionSettings = {
     apiKey: string;
     model: string;
     baseUrl: string;
+    reasoningEffort: "low" | "medium" | "high";
   };
   custom: {
     label: string;

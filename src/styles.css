@@ -168,16 +168,33 @@ textarea {
 
 .pdf-viewer-area {
   flex: 1;
-  overflow: auto;
+  /* `position: relative` anchors the absolutely-positioned .pdf-tab-viewer
+     children so they stack at inset: 0. We let each Viewer manage its own
+     internal scrolling (.rpv-core__inner-pages), so we don't need overflow
+     auto here — and absolute children would escape an overflow context
+     anyway. */
+  position: relative;
+  overflow: hidden;
   padding: 16px;
 }
 
-.assistant-header h1,
 .empty-state h2,
 .setup-screen h1 {
   margin: 0;
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   font-size: 1.4rem;
+}
+
+/* The right-pane title sits in the same row as the model chip and 设置 button,
+   so it needs to stay close to button-text size — otherwise the assistant
+   header grows taller than the PDF toolbar and the two header bottom-borders
+   stop aligning. */
+.assistant-header h1 {
+  margin: 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .panel-kicker,
@@ -278,6 +295,14 @@ textarea {
 
 .model-value {
   font-family: "Avenir Next", "Segoe UI", sans-serif;
+  /* Hyphenated model names (e.g. "gpt-5.4-mini") would otherwise break at
+     each "-" when the chip is squeezed by a narrow right pane, growing the
+     chip onto multiple lines and dragging the header taller. */
+  white-space: nowrap;
+}
+
+.model-provider {
+  white-space: nowrap;
 }
 
 .model-effort {

@@ -29,6 +29,7 @@ export type ConnectionSettings = {
     apiKey: string;
     model: string;
     baseUrl: string;
+    reasoningEffort: ReasoningEffort;
   };
   custom: {
     label: string;
@@ -111,8 +112,9 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
     },
     openai: {
       apiKey: env.OPENAI_API_KEY?.trim() || "",
-      model: env.OPENAI_MODEL?.trim() || "gpt-4o",
+      model: env.OPENAI_MODEL?.trim() || "gpt-5.4-mini",
       baseUrl: env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1",
+      reasoningEffort: normalizeOpenAIReasoningEffort(env.OPENAI_REASONING_EFFORT),
     },
     custom: {
       label: env.CUSTOM_PROVIDER_LABEL?.trim() || "Custom API",
@@ -161,6 +163,9 @@ export function mergeConnectionSettings(
       apiKey: overrides?.openai?.apiKey?.trim() || defaults.openai.apiKey,
       model: overrides?.openai?.model?.trim() || defaults.openai.model,
       baseUrl: overrides?.openai?.baseUrl?.trim() || defaults.openai.baseUrl,
+      reasoningEffort: normalizeOpenAIReasoningEffort(
+        overrides?.openai?.reasoningEffort || defaults.openai.reasoningEffort,
+      ),
     },
     custom: {
       label: overrides?.custom?.label?.trim() || defaults.custom.label,
@@ -234,10 +239,17 @@ export async function testConnectionSettings(input: ConnectionTestInput): Promis
     baseURL: config.baseUrl,
   });
 
+  // Reasoning models (gpt-5*, o-series) and DeepSeek's reasoner reject
+  // temperature; everyone else needs it. Keep this check identical to the
+  // runtime call shape so the smoke test surfaces the same failures.
+  const skipTemperature =
+    config.model === "deepseek-reasoner" ||
+    (input.provider === "openai" && openAIModelSupportsReasoning(config.model));
+
   await client.chat.completions.create({
     model: config.model,
     stream: false,
-    temperature: config.model === "deepseek-reasoner" ? undefined : 0,
+    temperature: skipTemperature ? undefined : 0,
     messages: [{ role: "user", content: "Reply with OK." }],
     max_tokens: 8,
   });
@@ -281,6 +293,9 @@ export function buildConnectionLabel(settings: ConnectionSettings) {
   if (settings.activeProvider === "custom") {
     return `${settings.custom.label} · ${settings.custom.model}`;
   }
+  if (openAIModelSupportsReasoning(settings.openai.model)) {
+    return `OpenAI · ${settings.openai.model} · ${settings.openai.reasoningEffort}`;
+  }
   return `OpenAI · ${settings.openai.model}`;
 }
 
@@ -296,6 +311,29 @@ function normalizeReasoningEffort(raw: string | undefined | null): ReasoningEffo
     return raw;
   }
   return "low";
+}
+
+// OpenAI's Responses API defaults reasoning models to medium effort. We mirror
+// that as the fallback so an existing config without an explicit value behaves
+// the same as the platform default.
+function normalizeOpenAIReasoningEffort(raw: string | undefined | null): ReasoningEffort {
+  if (raw === "low" || raw === "high") {
+    return raw;
+  }
+  return "medium";
+}
+
+// gpt-5* and the o-series reject `temperature` and accept `reasoning.effort`.
+// Older chat models (gpt-4o etc.) need temperature and don't understand
+// reasoning. We pivot on the model name to stay compatible with both.
+export function openAIModelSupportsReasoning(model: string): boolean {
+  const lower = model.toLowerCase();
+  return (
+    lower.startsWith("gpt-5") ||
+    lower.startsWith("o1") ||
+    lower.startsWith("o3") ||
+    lower.startsWith("o4")
+  );
 }
 
 function normalizeProcessOutput(output: string | Buffer | null | undefined) {

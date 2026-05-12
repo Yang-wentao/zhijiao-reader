@@ -222,7 +222,7 @@ const ASK_LOADING_STEPS = [
 ];
 
 function renderParagraphs(content: string) {
-  return splitParagraphs(content).map((paragraph, index) => (
+  return splitParagraphs(mergeOrphanTags(content)).map((paragraph, index) => (
     <ReactMarkdown
       key={`${index}-${paragraph}`}
       remarkPlugins={[remarkGfm, remarkMath]}
@@ -265,24 +265,65 @@ function renderRichContent(content: string) {
 }
 
 function normalizeMathMarkdown(content: string) {
-  return content
+  const normalized = content
     .replace(/\\\\\[((?:.|\n)+?)\\\\\]/g, (_, math) => `$$${math.trim()}$$`)
     .replace(/\\\\\(((?:.|\n)+?)\\\\\)/g, (_, math) => `$${math.trim()}$`)
     .replace(/\\\[((?:.|\n)+?)\\\]/g, (_, math) => `$$${math.trim()}$$`)
-    .replace(/\\\(((?:.|\n)+?)\\\)/g, (_, math) => `$${math.trim()}$`)
-    .replace(BARE_TAG_LINE_REGEX, (_, line) => `$$\n${line.trim()}\n$$`)
-    .replace(SINGLE_LINE_DISPLAY_MATH_REGEX, (_, body) => `\n\n$$\n${body.trim()}\n$$\n\n`);
+    .replace(/\\\(((?:.|\n)+?)\\\)/g, (_, math) => `$${math.trim()}$`);
+
+  // Paragraph-level safety net for weaker models (gpt-5.4-mini, deepseek
+  // v4-flash, ...) that emit a whole tagged equation as raw LaTeX with NO
+  // $$ delimiters at all — e.g. `\begin{pmatrix}...\end{pmatrix} \sim N(...)
+  // \tag{2.4}`. Wrap the whole paragraph in $$..$$ so KaTeX picks it up.
+  // The threshold check inside wrapBareMathParagraph keeps prose paragraphs
+  // that merely mention \tag from being mistakenly promoted into math mode.
+  const wrapped = wrapBareMathParagraph(normalized);
+
+  return wrapped.replace(
+    SINGLE_LINE_DISPLAY_MATH_REGEX,
+    (_, body) => `\n\n$$\n${body.trim()}\n$$\n\n`,
+  );
 }
 
-// Models occasionally output a display equation that uses \tag{...} but forget
-// to wrap it in $$...$$. The line ends up rendered as raw LaTeX text. As a
-// safety net, find single lines that:
-//   - contain \tag{...}
-//   - have NO $ characters at all (so we know they are not already inside math)
-// and wrap them in $$...$$ at display time. The line bound to a single line
-// (no newline allowed in the match) keeps us from accidentally wrapping
-// surrounding prose.
-const BARE_TAG_LINE_REGEX = /^([^$\n]*\\tag\{[^}]+\}[^$\n]*)$/gm;
+// "Looks like a math equation paragraph that the model forgot to wrap" =
+// has \tag{X}, has zero $ (so we're not inside any explicit math), has
+// content beyond just \tag itself, AND has enough LaTeX commands to be
+// distinguishable from prose that happens to mention the word "\tag".
+// Three or more `\command` tokens is a comfortable threshold: real
+// equations usually have many (\sim, \sigma, \begin, \left, ...), while
+// prose mentioning \tag rarely does.
+const BARE_MATH_COMMAND_THRESHOLD = 3;
+
+function wrapBareMathParagraph(paragraph: string) {
+  if (paragraph.includes("$")) return paragraph;
+  if (!/\\tag\{[^}]+\}/.test(paragraph)) return paragraph;
+  const withoutTag = paragraph.replace(/\\tag\{[^}]+\}/g, "").trim();
+  if (!withoutTag) return paragraph;
+  const commandCount = (paragraph.match(/\\[a-zA-Z]+/g) ?? []).length;
+  if (commandCount < BARE_MATH_COMMAND_THRESHOLD) return paragraph;
+  return `$$\n${paragraph.trim()}\n$$`;
+}
+
+// New-generation models often emit a display equation in one paragraph and
+// drop \tag{X} as its own paragraph just below, e.g.
+//
+//   $$
+//   X = Y + Z
+//   $$
+//
+//   \tag{2.4}
+//
+// KaTeX needs the \tag inside the same display block as the expression it is
+// tagging. Re-attach orphan tags BEFORE splitParagraphs so the merged block
+// stays in one paragraph and renders with the equation number on the right.
+const ORPHAN_TAG_AFTER_DISPLAY_REGEX = /\$\$([\s\S]*?)\$\$\s*\n+\s*(\\tag\{[^}]+\})/g;
+
+function mergeOrphanTags(content: string) {
+  return content.replace(
+    ORPHAN_TAG_AFTER_DISPLAY_REGEX,
+    (_, body: string, tag: string) => `$$\n${body.trim()} ${tag}\n$$`,
+  );
+}
 
 // remark-math only treats $$..$$ as DISPLAY mode (the mode where \tag{} is
 // allowed) when the $$ markers are on their own lines. A single-line block

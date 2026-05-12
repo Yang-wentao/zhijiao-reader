@@ -10,7 +10,6 @@ describe("PdfPane", () => {
       <PdfPane
         tabs={[]}
         activeTabId={null}
-        activeFileUrl={null}
         onFileSelected={vi.fn()}
         onSelectionCaptured={vi.fn()}
         onContextSelection={vi.fn()}
@@ -37,11 +36,10 @@ describe("PdfPane", () => {
     render(
       <PdfPane
         tabs={[
-          { id: "tab-1", fileName: "paper-a.pdf" },
-          { id: "tab-2", fileName: "paper-b.pdf" },
+          { id: "tab-1", fileName: "paper-a.pdf", fileUrl: "blob:a", lastPageIndex: 0, lastScrollTop: 0 },
+          { id: "tab-2", fileName: "paper-b.pdf", fileUrl: "blob:b", lastPageIndex: 0, lastScrollTop: 0 },
         ]}
         activeTabId="tab-1"
-        activeFileUrl={null}
         onFileSelected={vi.fn()}
         onSelectionCaptured={vi.fn()}
         onContextSelection={vi.fn()}
