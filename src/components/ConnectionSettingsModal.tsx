@@ -426,6 +426,32 @@ export function ConnectionSettingsModal({
 
         <div className="settings-grid settings-notes-grid">
           <div className="settings-section-header">
+            <p className="panel-kicker">PDF 批注</p>
+            <p className="settings-section-hint">
+              在 PDF 里高亮、写评论时使用的作者名，会显示在评论卡片上并写入 PDF 文件（WPS / Adobe 可见）。默认使用电脑用户名。
+            </p>
+          </div>
+          <label className="settings-field settings-field-wide">
+            <span>批注作者</span>
+            <input
+              aria-label="Annotation author"
+              placeholder="你的名字"
+              value={settings.annotations?.author ?? ""}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  annotations: {
+                    ...settings.annotations,
+                    author: event.target.value,
+                  },
+                })
+              }
+            />
+          </label>
+        </div>
+
+        <div className="settings-grid settings-notes-grid">
+          <div className="settings-section-header">
             <div className="settings-section-title-row">
               <p className="panel-kicker">Obsidian 笔记</p>
               <label className="settings-toggle">

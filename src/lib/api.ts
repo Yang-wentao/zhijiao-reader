@@ -1,5 +1,11 @@
 import { readSseStream } from "./sse";
-import type { AppConfig, ConnectionSettings, ConnectionTestResult, PassageCard } from "../types";
+import type {
+  AppConfig,
+  ConnectionSettings,
+  ConnectionTestResult,
+  PassageCard,
+  PdfHighlight,
+} from "../types";
 
 type StreamHandlers = {
   onDelta: (chunk: string) => void;
@@ -117,6 +123,54 @@ export async function appendNote(payload: AppendNotePayload): Promise<{ filePath
     throw new Error(body?.error ?? "Failed to append note.");
   }
   return { filePath: body.filePath ?? "", created: body.created ?? false };
+}
+
+// ── PDF highlight annotations ────────────────────────────────────────────
+
+// Read existing Highlight annotations from a PDF on disk (includes ones made
+// by WPS / Adobe / Preview). Returns [] for any failure — highlights are a
+// best-effort enhancement and must never block opening a PDF.
+export async function fetchHighlights(filePath: string): Promise<PdfHighlight[]> {
+  try {
+    const response = await fetch(`/api/annotations?path=${encodeURIComponent(filePath)}`);
+    if (!response.ok) {
+      return [];
+    }
+    const body = (await response.json()) as { ok?: boolean; highlights?: PdfHighlight[] };
+    return body.ok && Array.isArray(body.highlights) ? body.highlights : [];
+  } catch {
+    return [];
+  }
+}
+
+// Write the full set of managed highlights into the PDF file (the explicit
+// "save" — Cmd+S). The backend removes the highlights it previously wrote
+// and replaces them with this list; foreign annotations are left alone.
+// Throws on failure so the caller can surface a toast.
+export async function syncHighlights(
+  filePath: string,
+  highlights: PdfHighlight[],
+): Promise<void> {
+  const response = await fetch("/api/annotations/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filePath,
+      highlights: highlights.map((h) => ({
+        id: h.id,
+        color: h.color,
+        text: h.text,
+        rects: h.rects,
+        comment: h.comment,
+        author: h.author,
+        createdAt: h.createdAt,
+      })),
+    }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? "Failed to save highlights.");
+  }
 }
 
 export async function streamTranslation(

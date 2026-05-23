@@ -69,6 +69,7 @@ vi.mock("./components/PdfPane", () => ({
       endPage: number | null;
       x: number;
       y: number;
+      rects: unknown[];
     }) => void;
     onTabSelected: (tabId: string) => void;
   }) => (
@@ -106,6 +107,7 @@ vi.mock("./components/PdfPane", () => ({
             endPage: 3,
             x: 40,
             y: 80,
+            rects: [{ pageIndex: 2, left: 0.1, top: 0.2, width: 0.3, height: 0.03 }],
           })
         }
       >
@@ -237,7 +239,7 @@ describe("App selection flow", () => {
     await waitFor(() => expect(streamTranslation).toHaveBeenCalledTimes(1));
   });
 
-  it("right-clicking opens the notes menu without firing translation", async () => {
+  it("right-clicking opens the highlight color menu without firing translation", async () => {
     render(<App />);
 
     expect(await screen.findByText("知交文献阅读")).toBeInTheDocument();
@@ -245,69 +247,12 @@ describe("App selection flow", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
     fireEvent.click(await screen.findByRole("button", { name: "Right-click selection" }));
 
-    // The right-click menu shows note actions only — no translate item anymore.
-    expect(await screen.findByRole("menuitem", { name: "加入笔记（原文）" })).toBeInTheDocument();
+    // The right-click menu now shows highlight color swatches only — no
+    // translate item (selection mode) and no Obsidian notes items.
+    expect(await screen.findByRole("group", { name: "高亮颜色" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "高亮：黄色" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "翻译" })).not.toBeInTheDocument();
     expect(streamTranslation).not.toHaveBeenCalled();
-  });
-
-  it("keeps pending note appends when the user switches PDF tabs before translation finishes", async () => {
-    fetchAppConfig.mockResolvedValueOnce({
-      hasApiKey: false,
-      isReady: true,
-      provider: "codex",
-      providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"],
-      canSwitchProviders: true,
-      model: "gpt-5.4-mini",
-      modelOptions: ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"],
-      canSwitchModels: true,
-      reasoningEffort: "low",
-      reasoningEffortOptions: ["low", "medium", "high"],
-      canSwitchReasoningEffort: true,
-      questionActionLabel: "Ask ZhiJiao",
-      maxSelectionChars: 8000,
-      setupRequired: false,
-      connectionLabel: "Local Codex · gpt-5.4-mini · low",
-      notesReady: true,
-      translationTrigger: "selection",
-    });
-    let capturedHandlers: { onDelta: (chunk: string) => void; onDone: () => void } | null = null;
-    streamTranslation.mockImplementationOnce(async (_card, handlers) => {
-      capturedHandlers = handlers;
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("知交文献阅读")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "设置" })).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Provider" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Default flow:/)).not.toBeInTheDocument();
-
-    fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Open PDF" }));
-    fireEvent.click(await screen.findByRole("button", { name: "paper-1.pdf" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Right-click selection" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "加入笔记（原文 + 译文）" }));
-
-    await waitFor(() => expect(streamTranslation).toHaveBeenCalledTimes(1));
-
-    fireEvent.click(await screen.findByRole("button", { name: "paper-2.pdf" }));
-    expect(appendNote).not.toHaveBeenCalled();
-
-    await act(async () => {
-      capturedHandlers?.onDelta("译文");
-      capturedHandlers?.onDone();
-    });
-
-    await waitFor(() =>
-      expect(appendNote).toHaveBeenCalledWith({
-        pdfName: "paper-1.pdf",
-        startPage: 3,
-        endPage: 3,
-        original: "Selected paragraph",
-        translation: "译文",
-      }),
-    );
   });
 
   it("opens the setup dialog automatically when configuration is required", async () => {

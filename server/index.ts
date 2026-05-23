@@ -14,6 +14,7 @@ import { OpenAIProvider } from "./providers/openaiProvider.js";
 import { SjtuProvider } from "./providers/sjtuProvider.js";
 import type { AIProvider } from "./providers/types.js";
 import { createAIRouter } from "./routes/ai.js";
+import { createAnnotationsRouter } from "./routes/annotations.js";
 import { createNotesRouter } from "./routes/notes.js";
 import {
   buildConnectionLabel,
@@ -130,6 +131,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
       },
       getNotesReady: () => state.settings.notes.enabled && state.settings.notes.vaultPath.trim().length > 0,
       getTranslationTrigger: () => state.settings.preferences.translationTrigger,
+      getAnnotationAuthor: () => state.settings.annotations.author,
     }),
   );
 
@@ -137,6 +139,13 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
     "/api/notes",
     createNotesRouter({
       getNotesSettings: () => state.settings.notes,
+      isRequestOriginAllowed: (origin) => isAllowedAppOrigin(origin, allowedAppOrigins),
+    }),
+  );
+
+  app.use(
+    "/api/annotations",
+    createAnnotationsRouter({
       isRequestOriginAllowed: (origin) => isAllowedAppOrigin(origin, allowedAppOrigins),
     }),
   );

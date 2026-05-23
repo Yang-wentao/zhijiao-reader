@@ -31,7 +31,9 @@ function createMainWindow() {
     icon: appIconPath,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: join(__dirname, "preload.mjs"),
+      // preload.cjs (CommonJS) — a sandboxed renderer cannot load an ESM
+      // preload, so this must stay .cjs or window.desktopShell breaks.
+      preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },

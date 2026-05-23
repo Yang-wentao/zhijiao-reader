@@ -25,6 +25,7 @@ type RouteOptions = {
   setReasoningEffort?: (reasoningEffort: "low" | "medium" | "high") => void;
   getNotesReady?: () => boolean;
   getTranslationTrigger?: () => "selection" | "menu";
+  getAnnotationAuthor?: () => string;
 };
 
 const MAX_SELECTION_CHARS = 8000;
@@ -183,6 +184,7 @@ function buildConfigResponse(options: RouteOptions) {
     connectionLabel: options.getConnectionLabel(),
     notesReady: options.getNotesReady ? options.getNotesReady() : false,
     translationTrigger: options.getTranslationTrigger ? options.getTranslationTrigger() : "selection",
+    annotationAuthor: options.getAnnotationAuthor ? options.getAnnotationAuthor() : "",
   };
 }
 

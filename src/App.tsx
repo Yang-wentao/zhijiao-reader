@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AssistantPanel } from "./components/AssistantPanel";
 import { ConnectionSettingsModal } from "./components/ConnectionSettingsModal";
-import { PdfContextMenu } from "./components/PdfContextMenu";
+import { HighlightContextMenu, PdfContextMenu } from "./components/PdfContextMenu";
 import { PdfPane } from "./components/PdfPane";
 import { SplitLayout } from "./components/SplitLayout";
 import { splitIntoReadableChunks as splitStreamChunks } from "./lib/streaming";
@@ -9,9 +9,11 @@ import {
   appendNote,
   fetchAppConfig,
   fetchConnectionSettings,
+  fetchHighlights,
   saveConnectionSettings,
   streamAsk,
   streamTranslation,
+  syncHighlights,
   testConnectionSettings,
 } from "./lib/api";
 import { cardsReducer, createCard, getCardHistory, validateSelection } from "./state/cards";
@@ -20,6 +22,7 @@ import type {
   ConnectionSettings,
   PassageCard,
   PdfContextSelection,
+  PdfHighlight,
   PdfTab,
 } from "./types";
 
@@ -41,6 +44,7 @@ const DEFAULT_CONFIG: AppConfig = {
   connectionLabel: "Not connected",
   notesReady: false,
   translationTrigger: "selection",
+  annotationAuthor: "",
 };
 
 type PendingNoteAppend = {
@@ -73,7 +77,27 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [pendingAppends, setPendingAppends] = useState<PendingNoteAppend[]>([]);
+  // Highlight undo / redo stacks. Each entry is a full highlight plus the tab
+  // it belongs to; undo/redo pop the newest entry for the ACTIVE tab. These
+  // only ever touch in-memory state — the PDF file changes only on save.
+  const [undoStack, setUndoStack] = useState<{ tabId: string; highlight: PdfHighlight }[]>([]);
+  const [redoStack, setRedoStack] = useState<{ tabId: string; highlight: PdfHighlight }[]>([]);
+  // The highlight whose comment card is currently open in edit mode (textarea
+  // focused). null = no card being edited. Lives here, not in PdfPane, so the
+  // right-click "添加评论" action can open a card straight into edit mode.
+  const [editingHighlightId, setEditingHighlightId] = useState<string | null>(null);
+  // Position + target of the right-click menu shown on an existing highlight.
+  const [highlightMenu, setHighlightMenu] = useState<
+    { highlightId: string; x: number; y: number } | null
+  >(null);
   const tabsRef = useRef<PdfTab[]>([]);
+  // Always points at the latest highlight shortcut handlers so the global
+  // keyboard listener (attached once) calls versions with fresh closures.
+  const shortcutsRef = useRef<{ undo: () => void; redo: () => void; save: () => void }>({
+    undo: () => {},
+    redo: () => {},
+    save: () => {},
+  });
 
   useEffect(() => {
     void fetchAppConfig()
@@ -106,6 +130,51 @@ export default function App() {
     };
   }, []);
 
+  // Keep the shortcut ref current so the global keyboard listener always
+  // runs the latest closures.
+  useEffect(() => {
+    shortcutsRef.current = {
+      undo: handleUndo,
+      redo: handleRedo,
+      save: handleSaveHighlights,
+    };
+  });
+
+  // Global highlight shortcuts:
+  //   Cmd/Ctrl+Z        → undo highlight
+  //   Cmd/Ctrl+Shift+Z  → redo highlight
+  //   Cmd/Ctrl+S        → save highlights into the PDF file
+  // Skipped while the user is typing in a text field so they never steal the
+  // browser's native text editing shortcuts.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key !== "z" && key !== "s") return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) {
+          return;
+        }
+      }
+      if (key === "s") {
+        event.preventDefault();
+        shortcutsRef.current.save();
+        return;
+      }
+      // key === "z"
+      event.preventDefault();
+      if (event.shiftKey) {
+        shortcutsRef.current.redo();
+      } else {
+        shortcutsRef.current.undo();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
 
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) ?? null,
@@ -133,16 +202,36 @@ export default function App() {
   }
 
   function handleFileSelected(file: File) {
+    // Resolve the real disk path via the Electron bridge so the backend can
+    // write highlight annotations back into this PDF. null in a plain
+    // browser — highlights then render in-app but can't be persisted.
+    const filePath = window.desktopShell?.getPathForFile?.(file) ?? null;
     const nextTab: PdfTab = {
       id: crypto.randomUUID(),
       fileName: file.name,
       fileUrl: URL.createObjectURL(file),
+      filePath,
       cards: [],
       lastPageIndex: 0,
       lastScrollTop: 0,
+      highlights: [],
+      highlightsDirty: false,
     };
     setTabs((current) => [...current, nextTab]);
     setActiveTabId(nextTab.id);
+
+    // Load highlight annotations already in the file (incl. ones made by WPS
+    // / Adobe). Best-effort: failures leave the tab with no highlights.
+    if (filePath) {
+      void fetchHighlights(filePath).then((highlights) => {
+        if (highlights.length === 0) {
+          return;
+        }
+        setTabs((current) =>
+          current.map((tab) => (tab.id === nextTab.id ? { ...tab, highlights } : tab)),
+        );
+      });
+    }
   }
 
   function handleTabPageIndexChange(tabId: string, pageIndex: number) {
@@ -403,6 +492,223 @@ export default function App() {
     void runTranslation(card, contextMenu.tabId);
   }
 
+  function buildHighlight(
+    colorHex: string,
+    selection: PdfContextSelection,
+    comment: string,
+  ): PdfHighlight {
+    return {
+      id: crypto.randomUUID(),
+      color: colorHex,
+      rects: selection.rects,
+      text: selection.text,
+      comment,
+      author: config.annotationAuthor,
+      createdAt: Date.now(),
+      managed: true,
+    };
+  }
+
+  // Append a freshly created highlight to a tab. The overlay shows
+  // immediately; the PDF file isn't touched until the user saves (Cmd+S),
+  // so the tab is marked dirty to light up the save button.
+  function addHighlightToTab(tabId: string, highlight: PdfHighlight) {
+    setTabs((current) =>
+      current.map((entry) =>
+        entry.id === tabId
+          ? { ...entry, highlights: [...entry.highlights, highlight], highlightsDirty: true }
+          : entry,
+      ),
+    );
+    setUndoStack((current) => [...current, { tabId, highlight }]);
+    // A fresh highlight invalidates the redo stack.
+    setRedoStack([]);
+  }
+
+  function handleMenuHighlight(colorHex: string) {
+    if (!contextMenu) {
+      return;
+    }
+    const { tabId, selection } = contextMenu;
+    if (selection.rects.length === 0) {
+      return;
+    }
+    addHighlightToTab(tabId, buildHighlight(colorHex, selection, ""));
+  }
+
+  // Right-click "添加评论": create a highlight (default yellow) and open its
+  // comment card straight into edit mode so the user can type immediately.
+  function handleMenuComment() {
+    if (!contextMenu) {
+      return;
+    }
+    const { tabId, selection } = contextMenu;
+    if (selection.rects.length === 0) {
+      return;
+    }
+    const highlight = buildHighlight("#FFE920", selection, "");
+    addHighlightToTab(tabId, highlight);
+    setEditingHighlightId(highlight.id);
+  }
+
+  // Update a highlight's comment text (in-memory; saved to the file on Cmd+S).
+  // Writing a comment also (re)stamps the author with the name currently set
+  // in Settings, so changing the name there applies to every new edit.
+  function handleCommentChange(highlightId: string, comment: string) {
+    if (!activeTabId) {
+      return;
+    }
+    const author = config.annotationAuthor;
+    setTabs((current) =>
+      current.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              ...tab,
+              highlights: tab.highlights.map((h) =>
+                h.id === highlightId ? { ...h, comment, author } : h,
+              ),
+              highlightsDirty: true,
+            }
+          : tab,
+      ),
+    );
+    // Keep undo/redo snapshots current so a later redo restores the comment.
+    const syncSnapshot = (entry: { tabId: string; highlight: PdfHighlight }) =>
+      entry.highlight.id === highlightId
+        ? { ...entry, highlight: { ...entry.highlight, comment, author } }
+        : entry;
+    setUndoStack((current) => current.map(syncSnapshot));
+    setRedoStack((current) => current.map(syncSnapshot));
+  }
+
+  // Delete a comment (the card's × button). The highlight itself stays.
+  function handleCommentDelete(highlightId: string) {
+    handleCommentChange(highlightId, "");
+    setEditingHighlightId((current) => (current === highlightId ? null : current));
+  }
+
+  // Right-click on a highlight opens a menu (取消高亮 / 写批注).
+  function handleHighlightContextMenu(highlightId: string, x: number, y: number) {
+    setHighlightMenu({ highlightId, x, y });
+  }
+
+  // 取消高亮: drop the highlight (and its comment). Takes effect in the file
+  // on the next save, like every other highlight edit.
+  function handleRemoveHighlight(highlightId: string) {
+    if (!activeTabId) {
+      return;
+    }
+    setTabs((current) =>
+      current.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              ...tab,
+              highlights: tab.highlights.filter((h) => h.id !== highlightId),
+              highlightsDirty: true,
+            }
+          : tab,
+      ),
+    );
+    setUndoStack((current) => current.filter((entry) => entry.highlight.id !== highlightId));
+    setRedoStack((current) => current.filter((entry) => entry.highlight.id !== highlightId));
+    setEditingHighlightId((current) => (current === highlightId ? null : current));
+    setToast("已取消高亮（保存后写入文件）");
+  }
+
+  // Undo the most recent highlight in the ACTIVE tab — purely an in-memory
+  // operation (the file changes only on save). Only highlights created in
+  // this session are on the undo stack; imported ones (incl. WPS's) aren't.
+  function handleUndo() {
+    if (!activeTabId) {
+      return;
+    }
+    let index = -1;
+    for (let i = undoStack.length - 1; i >= 0; i -= 1) {
+      if (undoStack[i].tabId === activeTabId) {
+        index = i;
+        break;
+      }
+    }
+    if (index === -1) {
+      return;
+    }
+    const entry = undoStack[index];
+    setTabs((current) =>
+      current.map((t) =>
+        t.id === entry.tabId
+          ? {
+              ...t,
+              highlights: t.highlights.filter((h) => h.id !== entry.highlight.id),
+              highlightsDirty: true,
+            }
+          : t,
+      ),
+    );
+    setUndoStack((current) => current.filter((_, i) => i !== index));
+    setRedoStack((current) => [...current, entry]);
+    setToast("已撤销高亮（保存后写入文件）");
+  }
+
+  // Redo: re-apply the most recently undone highlight in the active tab.
+  function handleRedo() {
+    if (!activeTabId) {
+      return;
+    }
+    let index = -1;
+    for (let i = redoStack.length - 1; i >= 0; i -= 1) {
+      if (redoStack[i].tabId === activeTabId) {
+        index = i;
+        break;
+      }
+    }
+    if (index === -1) {
+      return;
+    }
+    const entry = redoStack[index];
+    setTabs((current) =>
+      current.map((t) =>
+        t.id === entry.tabId
+          ? { ...t, highlights: [...t.highlights, entry.highlight], highlightsDirty: true }
+          : t,
+      ),
+    );
+    setRedoStack((current) => current.filter((_, i) => i !== index));
+    setUndoStack((current) => [...current, entry]);
+    setToast("已重做高亮（保存后写入文件）");
+  }
+
+  // Save: write the active tab's managed highlights into the PDF file. This
+  // is the only operation that touches the file on disk — borrowing the
+  // explicit-save model from 知云文献阅读.
+  function handleSaveHighlights() {
+    if (!activeTabId) {
+      return;
+    }
+    const tab = tabsRef.current.find((t) => t.id === activeTabId);
+    if (!tab) {
+      return;
+    }
+    if (!tab.filePath) {
+      setToast("无法获取 PDF 文件路径，无法保存高亮（请确认在桌面端打开）");
+      return;
+    }
+    if (!tab.highlightsDirty) {
+      setToast("高亮已是最新，无需保存");
+      return;
+    }
+    const managed = tab.highlights.filter((h) => h.managed);
+    void syncHighlights(tab.filePath, managed)
+      .then(() => {
+        setTabs((current) =>
+          current.map((t) => (t.id === tab.id ? { ...t, highlightsDirty: false } : t)),
+        );
+        setToast("已保存高亮到 PDF 文件");
+      })
+      .catch((error) => {
+        setToast(error instanceof Error ? error.message : "保存高亮失败");
+      });
+  }
+
   function handleAppendOriginal() {
     if (!contextMenu) {
       return;
@@ -553,8 +859,20 @@ export default function App() {
               fileUrl: tab.fileUrl,
               lastPageIndex: tab.lastPageIndex,
               lastScrollTop: tab.lastScrollTop,
+              highlights: tab.highlights,
             }))}
             activeTabId={activeTabId}
+            canUndo={undoStack.some((entry) => entry.tabId === activeTabId)}
+            canSave={activeTab?.highlightsDirty ?? false}
+            onUndo={handleUndo}
+            onSaveHighlights={handleSaveHighlights}
+            editingHighlightId={editingHighlightId}
+            commentAuthor={config.annotationAuthor}
+            onStartEditComment={setEditingHighlightId}
+            onStopEditComment={() => setEditingHighlightId(null)}
+            onCommentChange={handleCommentChange}
+            onCommentDelete={handleCommentDelete}
+            onHighlightContextMenu={handleHighlightContextMenu}
             onFileSelected={handleFileSelected}
             onSelectionCaptured={handleSelectionCaptured}
             onContextSelection={handleContextSelection}
@@ -596,12 +914,21 @@ export default function App() {
         <PdfContextMenu
           x={contextMenu.selection.x}
           y={contextMenu.selection.y}
-          notesReady={config.notesReady}
           showTranslate={config.translationTrigger === "menu"}
+          canHighlight={contextMenu.selection.rects.length > 0}
           onClose={() => setContextMenu(null)}
           onTranslate={handleMenuTranslate}
-          onAppendOriginal={handleAppendOriginal}
-          onAppendWithTranslation={handleAppendWithTranslation}
+          onHighlight={handleMenuHighlight}
+          onComment={handleMenuComment}
+        />
+      ) : null}
+      {highlightMenu ? (
+        <HighlightContextMenu
+          x={highlightMenu.x}
+          y={highlightMenu.y}
+          onClose={() => setHighlightMenu(null)}
+          onComment={() => setEditingHighlightId(highlightMenu.highlightId)}
+          onRemove={() => handleRemoveHighlight(highlightMenu.highlightId)}
         />
       ) : null}
       {toast ? <div className="toast">{toast}</div> : null}

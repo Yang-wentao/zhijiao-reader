@@ -10,6 +10,17 @@ describe("PdfPane", () => {
       <PdfPane
         tabs={[]}
         activeTabId={null}
+        canUndo={false}
+        canSave={false}
+        onUndo={vi.fn()}
+        onSaveHighlights={vi.fn()}
+        editingHighlightId={null}
+        commentAuthor="测试者"
+        onStartEditComment={vi.fn()}
+        onStopEditComment={vi.fn()}
+        onCommentChange={vi.fn()}
+        onCommentDelete={vi.fn()}
+        onHighlightContextMenu={vi.fn()}
         onFileSelected={vi.fn()}
         onSelectionCaptured={vi.fn()}
         onContextSelection={vi.fn()}
@@ -36,10 +47,35 @@ describe("PdfPane", () => {
     render(
       <PdfPane
         tabs={[
-          { id: "tab-1", fileName: "paper-a.pdf", fileUrl: "blob:a", lastPageIndex: 0, lastScrollTop: 0 },
-          { id: "tab-2", fileName: "paper-b.pdf", fileUrl: "blob:b", lastPageIndex: 0, lastScrollTop: 0 },
+          {
+            id: "tab-1",
+            fileName: "paper-a.pdf",
+            fileUrl: "blob:a",
+            lastPageIndex: 0,
+            lastScrollTop: 0,
+            highlights: [],
+          },
+          {
+            id: "tab-2",
+            fileName: "paper-b.pdf",
+            fileUrl: "blob:b",
+            lastPageIndex: 0,
+            lastScrollTop: 0,
+            highlights: [],
+          },
         ]}
         activeTabId="tab-1"
+        canUndo={false}
+        canSave={false}
+        onUndo={vi.fn()}
+        onSaveHighlights={vi.fn()}
+        editingHighlightId={null}
+        commentAuthor="测试者"
+        onStartEditComment={vi.fn()}
+        onStopEditComment={vi.fn()}
+        onCommentChange={vi.fn()}
+        onCommentDelete={vi.fn()}
+        onHighlightContextMenu={vi.fn()}
         onFileSelected={vi.fn()}
         onSelectionCaptured={vi.fn()}
         onContextSelection={vi.fn()}

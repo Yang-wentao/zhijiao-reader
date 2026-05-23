@@ -162,6 +162,21 @@ textarea {
   gap: 8px;
 }
 
+/* Undo + Save buttons for highlights, sitting to the left of the zoom
+   controls in the PDF toolbar. */
+.highlight-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The Save button stands out only when there are unsaved highlight changes
+   (`.is-dirty`) — a calm cue to press ⌘S, the way 知云 surfaces "save". */
+.highlight-save-button.is-dirty {
+  background: #1f355e;
+  color: #fff;
+}
+
 .zoom-indicator {
   min-width: 92px;
 }
@@ -1172,6 +1187,182 @@ textarea {
   margin: 4px 12px 6px;
   font-size: 11px;
   color: rgba(15, 23, 42, 0.55);
+}
+
+/* Right-click menu: row of highlight color swatches. */
+.pdf-context-menu-colors {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px 4px;
+}
+
+.pdf-context-color-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 100ms ease;
+}
+
+.pdf-context-color-swatch:hover {
+  transform: scale(1.12);
+}
+
+.pdf-context-menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: rgba(15, 23, 42, 0.1);
+}
+
+/* Highlight overlay: one layer per page, drawn on top of the canvas. The
+   layer fills the page; each highlight block is positioned with percentages
+   so it scrolls and zooms with the page. `pointer-events: none` keeps text
+   selection working straight through the highlight. */
+.zhijiao-highlight-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* One group per highlight. The group carries the translucency (opacity),
+   the individual line rectangles inside are FULLY OPAQUE.
+   Why: a multi-line highlight is several line rectangles, and adjacent
+   lines' rectangles overlap slightly at their edges. If each rectangle were
+   individually translucent, those overlaps would stack (0.4 + 0.4) and the
+   middle lines would look darker than the first/last. By making the rects
+   opaque and putting opacity on the GROUP, the whole highlight composites
+   as ONE layer — overlaps merge into a solid shape first, then the single
+   group opacity is applied uniformly. Every line ends up the same shade. */
+.zhijiao-highlight-group {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+}
+
+.zhijiao-highlight-rect {
+  position: absolute;
+  border-radius: 1px;
+  /* Highlights are clickable so the user can add / edit a comment. The
+     layer + group stay pointer-events:none; only the visible rects opt in. */
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* react-pdf-viewer natively renders PDF markup annotations — including the
+   /Popup we write for WPS compatibility — as its own yellow popup box. We
+   render our own comment cards, so suppress react-pdf-viewer's popup. (Link
+   annotations are a different class and stay clickable.) */
+.rpv-core__annotation--popup,
+.rpv-core__annotation-popup-wrapper {
+  display: none !important;
+}
+
+/* Right-margin layer that holds the floating comment cards. Fills the
+   viewer; only the cards themselves are interactive. */
+.zhijiao-comment-gutter {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* The card itself. Width / top / right are set inline (anchored to the
+   highlight, plus any user drag-offset). Height auto-fits the comment unless
+   the user has resized it. `resize: both` gives the bottom-right grab handle;
+   the header is the move handle. */
+.zhijiao-comment-card {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #fffdf5;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  padding: 10px 12px 12px;
+  pointer-events: auto;
+  overflow: hidden;
+  resize: both;
+  min-width: 170px;
+  min-height: 64px;
+  max-width: 560px;
+  /* Caps the auto-fit height for very long comments — the body scrolls past
+     this. Also caps how tall the user can manually resize the card. */
+  max-height: 480px;
+}
+
+.zhijiao-comment-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex: 0 0 auto;
+  cursor: move;
+  user-select: none;
+}
+
+.zhijiao-comment-author {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.zhijiao-comment-time {
+  flex: 1;
+  font-size: 11px;
+  color: rgba(15, 23, 42, 0.5);
+}
+
+.zhijiao-comment-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  color: rgba(15, 23, 42, 0.4);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.zhijiao-comment-close:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.zhijiao-comment-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1f2937;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: text;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.zhijiao-comment-input {
+  width: 100%;
+  box-sizing: border-box;
+  /* Height is driven by JS (auto-grows with typed text); bounded here. */
+  flex: 0 0 auto;
+  min-height: 56px;
+  max-height: 320px;
+  overflow: auto;
+  resize: none;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1f2937;
+  border: 1px solid rgba(37, 102, 232, 0.5);
+  border-radius: 6px;
+  padding: 6px 8px;
+  outline: none;
 }
 
 .settings-notes-grid {

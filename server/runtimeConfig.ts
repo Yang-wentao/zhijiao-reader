@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { userInfo } from "node:os";
 import OpenAI from "openai";
 import type { ReasoningEffort } from "./config.js";
 
@@ -53,6 +54,14 @@ export type ConnectionSettings = {
      */
     translationTrigger: "selection" | "menu";
   };
+  annotations: {
+    /**
+     * Author name stamped onto highlight / comment annotations written into
+     * the PDF (the /T field) and shown on the in-app comment card. Defaults
+     * to the OS account name; the user can override it in Settings.
+     */
+    author: string;
+  };
 };
 
 type PartialConnectionSettings = Partial<ConnectionSettings> & {
@@ -63,6 +72,7 @@ type PartialConnectionSettings = Partial<ConnectionSettings> & {
   custom?: Partial<ConnectionSettings["custom"]>;
   notes?: Partial<ConnectionSettings["notes"]>;
   preferences?: Partial<ConnectionSettings["preferences"]>;
+  annotations?: Partial<ConnectionSettings["annotations"]>;
 };
 
 export type ConnectionTestInput = {
@@ -131,7 +141,19 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
     preferences: {
       translationTrigger: env.ZHIJIAO_TRANSLATION_TRIGGER === "menu" ? "menu" : "selection",
     },
+    annotations: {
+      author: env.ZHIJIAO_ANNOTATION_AUTHOR?.trim() || osAccountName(),
+    },
   };
+}
+
+// Best-effort OS account name, used as the default annotation author.
+function osAccountName(): string {
+  try {
+    return userInfo().username?.trim() || "";
+  } catch {
+    return "";
+  }
 }
 
 export function mergeConnectionSettings(
@@ -191,6 +213,12 @@ export function mergeConnectionSettings(
         overrides?.preferences?.translationTrigger === "selection"
           ? overrides.preferences.translationTrigger
           : defaults.preferences.translationTrigger,
+    },
+    annotations: {
+      author:
+        typeof overrides?.annotations?.author === "string"
+          ? overrides.annotations.author.trim()
+          : defaults.annotations.author,
     },
   };
 }
