@@ -2,7 +2,17 @@
 
 ![知交文献阅读截图](docs/screenshot.png)
 
-AI-powered paper reader for a two-pane workflow: PDF on the left, translation, notes, and Q&A on the right.
+AI-powered paper reader for a two-pane workflow: PDF on the left; streaming translation, term explanations, and follow-up Q&A cards on the right. Highlight and annotate the original text — annotations are written back into the PDF file itself.
+
+> **v1.0.0 — stable release.** 1.0 does not mean "more features"; it means the core loop (*select → understand in seconds → keep reading*) is complete, reliable, and proven by daily real-world use.
+
+## Highlights
+
+- **Math that survives real papers** — full `react-markdown` + `remark-math` + KaTeX pipeline with multiple fallbacks for imperfect model output (single-line `$$` blocks, bare LaTeX paragraphs, orphaned `\tag{}` numbers).
+- **Designed for long reading sessions** — warm paper-tone theme, serif body text, adjustable font size and line height (persisted), collapsible cards, copy/retry actions.
+- **Annotations live in your PDF, not in our app** — five highlight colors plus draggable comment cards, written into the file as standard PDF annotations. Interoperable with WPS, Adobe, and macOS Preview in both directions. Explicit save (`Cmd/Ctrl+S`) with undo/redo, atomic writes.
+- **Excerpt into your notes** — right-click a selection to append the original text (optionally with its translation) to a local markdown folder, fully Obsidian-vault compatible.
+- **Local-first, provider-agnostic** — everything runs on your machine; API keys never leave it. Switch between DeepSeek, SJTU API, OpenAI, local Codex CLI, or any OpenAI-compatible endpoint, with a built-in connection test. The backend stops consuming the model stream the moment the client disconnects.
 
 ## What It Is
 
@@ -11,9 +21,9 @@ AI-powered paper reader for a two-pane workflow: PDF on the left, translation, n
 - Desktop shell: Electron
 - PDF viewer: `@react-pdf-viewer/core`
 - Math rendering: `react-markdown` + `remark-math` + `rehype-katex`
-- AI backends: local Codex CLI, DeepSeek API, SJTU API, OpenAI API, custom OpenAI-compatible endpoints
+- AI backends: DeepSeek API, SJTU API, OpenAI API, local Codex CLI, custom OpenAI-compatible endpoints
 
-By default it runs as a local web app in your browser. The repository also includes an Electron shell for packaged desktop builds.
+Runs as a local web app in your browser, or as a packaged desktop build (macOS DMG / Windows installer / Linux AppImage) — see [GitHub Releases](https://github.com/Yang-wentao/zhijiao-reader/releases).
 
 ## Prerequisites
 
@@ -21,129 +31,62 @@ By default it runs as a local web app in your browser. The repository also inclu
 - npm 10+
 - Optional: local `codex` CLI if you want to use `Local Codex`
 
-## Setup
-
-1. Copy `.env.example` to `.env`.
-2. `npm run launch` can start immediately even if no API is configured yet.
-3. Complete provider setup inside the app with the `Settings` button in the right panel.
-4. To use Obsidian notes, set the vault path and excerpt subdirectory in `Settings`.
-5. `npm run configure` is still available if you prefer terminal setup for the `.env` defaults.
-
-The real `.env` file stays local and is ignored by git. Only `.env.example` should be shared.
-Runtime connection settings are stored locally in `config/providers.local.json`, which is also ignored by git.
-
-## Run
-
-```bash
-npm install
-npm run launch
-```
-
-Development mode:
-
-```bash
-npm run dev
-```
-
-## One-Click Start
-
-You can also use the packaged startup entry points:
-
-- macOS: double-click `Launch ZhiJiao Reader.command`
-- Windows: double-click `Launch ZhiJiao Reader.bat`
-- Terminal:
-
-```bash
-npm run launch
-```
-
-Useful helper commands:
-
-```bash
-npm run configure
-npm run check
-npm run release:zip
-npm run electron:dev
-npm run electron:pack
-```
-
-`npm run launch` will:
-
-- create `.env` from `.env.example` if needed
-- check whether local `codex` is available
-- install dependencies if `node_modules` is missing
-- start the app and open the browser automatically
-
-After launch, the app can open a connection settings dialog automatically when setup is still incomplete.
-
-`npm run release:zip` will create a versioned `.zip` in `release/` from the current committed git state.
-
-GitHub publish helper docs:
-
-- [GitHub Distribution](docs/github-distribution.md)
-- [Electron Packaging](docs/electron-packaging.md)
-
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8787`
-
-## Current MVP
-
-- Upload a local PDF
-- Open multiple local PDFs with tabs
-- Select a passage in the PDF and open a right-click action menu
-- Translate the passage into Chinese from the context menu
-- Append the selected original text, or original text plus translation, to a local Obsidian vault markdown note
-- Ask follow-up questions in a card scoped to that passage
-- Copy or retry responses
-- Resize the split panes
-- Switch backend provider between OpenAI, DeepSeek, and local Codex CLI
-- Use SJTU's OpenAI-compatible API endpoint
-- Use a custom OpenAI-compatible API endpoint with base URL, model name, and API key
-- Test provider connectivity from the in-app settings dialog before saving
-- Run as an Electron desktop shell during development
-
-## Known limits
-
-- Scanned image PDFs are not supported
-- Refreshing the page clears cards
-- OpenAI mode needs a valid `OPENAI_API_KEY`
-- DeepSeek mode needs a valid `DEEPSEEK_API_KEY`
-- Codex mode depends on a working local `codex` CLI session
-- Custom API mode expects an OpenAI-compatible `/v1` endpoint
-- Local Codex is still not true token-by-token streaming; the app simulates a more readable progressive reveal on the frontend
-- Electron packaging is present, but signing and notarization are not configured yet
-
-## GitHub Quick Start
-
-Once the repository is published, users can either:
-
-1. Install and launch with one command:
-
-macOS / Linux:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.sh | bash
-```
-
-Windows PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.ps1 | iex
-```
-
-The installer checks `git`, `node`, `npm`, and requires Node.js 20+ before it clones and launches the app.
-
-2. Clone and launch from source:
+## Setup & Run
 
 ```bash
 git clone https://github.com/Yang-wentao/zhijiao-reader.git
 cd zhijiao-reader
+npm install
 npm run launch
 ```
 
-3. Download a packaged build from GitHub Releases:
-   - macOS: unsigned `.zip`
-   - Windows: `.zip`
-   - Linux: `.AppImage`
+`npm run launch` will create `.env` from `.env.example` if needed, install dependencies when missing, start both dev servers, and open the browser. Complete provider setup inside the app via the `Settings` button (the dialog opens automatically when setup is incomplete). To use markdown notes, set the notes folder path and excerpt subdirectory in `Settings`.
 
-Users who want `Local Codex` still need to install the Codex CLI separately on their own machine.
+One-command install:
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.sh | bash
+```
+
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/Yang-wentao/zhijiao-reader/main/install.ps1 | iex
+```
+
+The real `.env` file stays local and is ignored by git; runtime connection settings live in `config/providers.local.json`, also ignored by git.
+
+Other commands:
+
+```bash
+npm run dev           # dev servers (frontend 5173 / backend 8787)
+npm test              # Vitest suite
+npm run electron:dev  # Electron dev mode
+npm run electron:pack # build desktop packages
+```
+
+Docs: [AGENTS.md](AGENTS.md) (engineering handbook, Chinese) · [GitHub Distribution](docs/github-distribution.md) · [Electron Packaging](docs/electron-packaging.md)
+
+## Version History
+
+| Version | Summary |
+|---|---|
+| v0.1.0 | First usable build: two-pane reader + select-to-translate + streaming cards |
+| v0.2.0 | First packaged macOS release (arm64/x64 DMG); full Chinese localization; Obsidian notes (community PR #1) |
+| v0.2.1 | Notes off by default; select-to-translate restored |
+| v0.3.0 | DeepSeek v4 models; configurable translation trigger; Windows installer polish |
+| v0.3.2 | Drag-and-drop PDFs; typography controls; `\tag{}` render fixes |
+| v0.3.4 | Instant tab switching; OpenAI model picker + reasoning effort |
+| v0.3.5 | PDF highlights + comments written into the file (WPS/Adobe interop); explicit save, undo/redo |
+| v0.3.6 | Fully localized errors; stream stops on client disconnect; model dropdown fixes |
+| **v1.0.0** | **Stable release — no new features; 1.0 means "finished"** |
+
+## Known Limits
+
+- Scanned/image-only PDFs are not supported (text must be selectable)
+- Translation cards do not persist across reloads (highlights/comments live in the PDF file and are unaffected)
+- Writing annotations back to the file requires the desktop build (browsers cannot expose real file paths)
+- Local Codex is not token-level streaming; the app simulates a readable progressive reveal client-side
+- Packages are unsigned (no notarization / code signing yet) — see the Chinese README for first-launch bypass steps
+
+The Chinese [README.md](README.md) is the primary document; this file is a condensed English companion.
