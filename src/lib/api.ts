@@ -240,7 +240,7 @@ async function streamRequest(endpoint: string, payload: unknown, handlers: Strea
     });
   } catch (error) {
     if (timedOut || controller.signal.aborted) {
-      throw new Error("The request timed out after 45 seconds. Please retry or switch models.");
+      throw new Error("请求超过 45 秒仍未完成，请重试或更换更快的模型。");
     }
     throw error;
   } finally {

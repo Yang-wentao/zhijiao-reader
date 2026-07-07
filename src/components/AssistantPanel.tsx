@@ -9,6 +9,7 @@ type AssistantPanelProps = {
   model: string;
   isUpdatingModel: boolean;
   questionActionLabel: string;
+  translationTrigger: "selection" | "menu";
   onOpenSettings: () => void;
   onAsk: (cardId: string, question: string) => void;
   onDismiss: (cardId: string) => void;
@@ -34,6 +35,7 @@ export function AssistantPanel({
   model,
   isUpdatingModel,
   questionActionLabel,
+  translationTrigger,
   onOpenSettings,
   onAsk,
   onDismiss,
@@ -189,7 +191,11 @@ export function AssistantPanel({
       {cards.length === 0 ? (
         <div className="empty-state empty-state-panel">
           <h2>在左侧 PDF 中选取一段文字</h2>
-          <p>选中后这里会自动生成译文卡片，也可以继续追问该段落。</p>
+          {translationTrigger === "menu" ? (
+            <p>选中后右键，选择「翻译」即可生成译文卡片，也可以继续追问该段落。</p>
+          ) : (
+            <p>选中后这里会自动生成译文卡片，也可以继续追问该段落。</p>
+          )}
           <ul className="empty-state-tips">
             <li>支持公式和 markdown 渲染</li>
             <li>右上角 <strong>设置</strong> 可切换模型与服务方</li>

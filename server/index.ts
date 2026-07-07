@@ -202,6 +202,13 @@ function createUnavailableProvider(message: string): AIProvider {
   };
 }
 
+// Curated model lists stay short, but the user's saved model must always be
+// selectable — otherwise Settings shows the wrong model and /api/model rejects
+// switching back to it.
+function withSavedModel(savedModel: string, curated: string[]): string[] {
+  return !savedModel || curated.includes(savedModel) ? curated : [savedModel, ...curated];
+}
+
 function createProviderRuntimeMap(settings: ConnectionSettings): Record<ProviderName, ProviderRuntime> {
   const codexProvider = new CodexProvider({
     codexBin: settings.codex.bin,
@@ -219,7 +226,9 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
 
   return {
     codex: {
-      provider: codexReady ? codexProvider : createUnavailableProvider(`Unable to execute ${settings.codex.bin}.`),
+      provider: codexReady
+        ? codexProvider
+        : createUnavailableProvider(`无法执行 ${settings.codex.bin}，请确认本地 Codex CLI 已安装。`),
       isReady: codexReady,
       model: settings.codex.model,
       modelOptions: ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"],
@@ -245,16 +254,15 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
             reasoningEffort: settings.openai.reasoningEffort,
           })
         : null;
-      // Curated dropdown — keeps the user's currently saved model visible even
-      // if it isn't in the curated list (e.g. a legacy "gpt-4o" or "gpt-5.4-mini"
-      // config). gpt-5.3-codex-spark is the curated "fast" option in place of
+      // gpt-5.3-codex-spark is the curated "fast" option in place of
       // gpt-5.4-mini, which has been observed to be sluggish on chaoye.xyz.
-      const baseModelOptions = ["gpt-5.5", "gpt-5.4", "gpt-5.3-codex-spark"];
-      const modelOptions = baseModelOptions.includes(settings.openai.model)
-        ? baseModelOptions
-        : [settings.openai.model, ...baseModelOptions];
+      const modelOptions = withSavedModel(settings.openai.model, [
+        "gpt-5.5",
+        "gpt-5.4",
+        "gpt-5.3-codex-spark",
+      ]);
       return {
-        provider: openaiProvider ?? createUnavailableProvider("OPENAI_API_KEY is missing."),
+        provider: openaiProvider ?? createUnavailableProvider("还没有配置 OpenAI API key，请在设置中填写。"),
         isReady: openaiReady,
         model: settings.openai.model,
         modelOptions,
@@ -280,10 +288,13 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
             baseURL: settings.deepseek.baseUrl,
             thinkingMode: settings.deepseek.thinkingMode,
           })
-        : createUnavailableProvider("DEEPSEEK_API_KEY is missing."),
+        : createUnavailableProvider("还没有配置 DeepSeek API key，请在设置中填写。"),
       isReady: deepseekReady,
       model: settings.deepseek.model,
-      modelOptions: ["deepseek-v4-flash", "deepseek-v4-pro"],
+      // Same rule as OpenAI: keep the user's saved model selectable even when
+      // it isn't in the curated list (e.g. a legacy "deepseek-chat" config) —
+      // otherwise Settings misreports it and /api/model rejects re-selecting it.
+      modelOptions: withSavedModel(settings.deepseek.model, ["deepseek-v4-flash", "deepseek-v4-pro"]),
       canSwitchModels: true,
       reasoningEffort: null,
       reasoningEffortOptions: [],
@@ -296,10 +307,17 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
             model: settings.sjtu.model,
             baseURL: settings.sjtu.baseUrl,
           })
-        : createUnavailableProvider("SJTU API settings are incomplete."),
+        : createUnavailableProvider("SJTU API 连接信息不完整，请在设置中填写。"),
       isReady: sjtuReady,
       model: settings.sjtu.model,
-      modelOptions: ["deepseek-chat", "deepseek-reasoner", "glm-5", "minimax", "minimax-m2.5", "qwen3coder"],
+      modelOptions: withSavedModel(settings.sjtu.model, [
+        "deepseek-chat",
+        "deepseek-reasoner",
+        "glm-5",
+        "minimax",
+        "minimax-m2.5",
+        "qwen3coder",
+      ]),
       canSwitchModels: true,
       reasoningEffort: null,
       reasoningEffortOptions: [],
@@ -312,7 +330,7 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
             model: settings.custom.model,
             baseURL: settings.custom.baseUrl,
           })
-        : createUnavailableProvider("Custom API settings are incomplete."),
+        : createUnavailableProvider("自定义 API 连接信息不完整，请在设置中填写。"),
       isReady: customReady,
       model: settings.custom.model,
       modelOptions: [settings.custom.model],

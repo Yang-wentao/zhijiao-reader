@@ -53,7 +53,7 @@ describe("stream request timeout", () => {
       onDelta: () => undefined,
       onDone: () => undefined,
     });
-    const assertion = expect(pending).rejects.toThrow("timed out");
+    const assertion = expect(pending).rejects.toThrow("请求超过 45 秒");
 
     await vi.advanceTimersByTimeAsync(46_000);
 

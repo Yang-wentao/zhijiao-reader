@@ -123,11 +123,11 @@ export function createAIRouter(options: RouteOptions) {
     }
     const selectionText = body?.selectionText?.trim() ?? "";
     if (!selectionText) {
-      res.status(400).json({ error: "No selected text provided." });
+      res.status(400).json({ error: "没有收到选中的文字。" });
       return;
     }
     if (selectionText.length > MAX_SELECTION_CHARS) {
-      res.status(400).json({ error: "Selected text is too long. Please select a shorter passage." });
+      res.status(400).json({ error: "选中的文字太长了，请缩短后再试。" });
       return;
     }
     await streamSse(res, options.getProvider().streamTranslation({ selectionText, pageNumber: body?.pageNumber ?? null }));
@@ -144,20 +144,23 @@ export function createAIRouter(options: RouteOptions) {
     const selectionText = body?.selectionText?.trim() ?? "";
     const question = body?.question?.trim() ?? "";
     if (!selectionText || !question) {
-      res.status(400).json({ error: "Selection text and question are required." });
+      res.status(400).json({ error: "缺少选中的文字或问题内容。" });
       return;
     }
     if (selectionText.length > MAX_SELECTION_CHARS) {
-      res.status(400).json({ error: "Selected text is too long. Please select a shorter passage." });
+      res.status(400).json({ error: "选中的文字太长了，请缩短后再试。" });
       return;
     }
+    // Keep only the most recent turns — a runaway card history would
+    // otherwise inflate every follow-up request without improving answers.
+    const history = Array.isArray(body?.history) ? body.history.slice(-40) : [];
     await streamSse(
       res,
       options.getProvider().streamAnswer({
         selectionText,
         pageNumber: body?.pageNumber ?? null,
         question,
-        history: body?.history ?? [],
+        history,
       }),
     );
   });
@@ -190,21 +193,22 @@ function buildConfigResponse(options: RouteOptions) {
 
 function getProviderErrorMessage(providerName: ProviderName) {
   if (providerName === "openai") {
-    return "OPENAI_API_KEY is missing.";
+    return "还没有配置 OpenAI API key，请在设置中填写。";
   }
   if (providerName === "deepseek") {
-    return "DEEPSEEK_API_KEY is missing.";
+    return "还没有配置 DeepSeek API key，请在设置中填写。";
   }
   if (providerName === "sjtu") {
-    return "SJTU API credentials are missing.";
+    return "SJTU API 连接信息不完整，请在设置中填写。";
   }
   if (providerName === "custom") {
-    return "Custom API credentials are missing.";
+    return "自定义 API 连接信息不完整，请在设置中填写。";
   }
-  return "Provider is not ready.";
+  return "当前服务提供方尚未就绪，请检查设置。";
 }
 
-async function streamSse(res: Response, iterablePromise: Promise<AsyncIterable<string>>) {
+// Exported for tests — routes use it via the router handlers above.
+export async function streamSse(res: Response, iterablePromise: Promise<AsyncIterable<string>>) {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -215,17 +219,33 @@ async function streamSse(res: Response, iterablePromise: Promise<AsyncIterable<s
     writeSseEvent(res, "status", { message: "The model is still working." });
   }, 10000);
 
+  // When the client goes away (45s frontend timeout, closed card, closed
+  // window), stop consuming the provider stream instead of paying for the
+  // rest of the completion. Breaking out of the for-await calls the
+  // iterator's return(), which aborts the underlying HTTP stream.
+  let clientGone = false;
+  res.on("close", () => {
+    clientGone = true;
+  });
+
   try {
     const iterable = await iterablePromise;
     for await (const chunk of iterable) {
+      if (clientGone) {
+        break;
+      }
       writeSseEvent(res, "delta", { text: chunk });
     }
-    writeSseEvent(res, "done", { ok: true });
-    res.end();
+    if (!clientGone) {
+      writeSseEvent(res, "done", { ok: true });
+      res.end();
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown AI error";
-    writeSseEvent(res, "error", { error: message });
-    res.end();
+    if (!clientGone) {
+      const message = error instanceof Error ? error.message : "未知的 AI 错误";
+      writeSseEvent(res, "error", { error: message });
+      res.end();
+    }
   } finally {
     clearInterval(heartbeatId);
   }

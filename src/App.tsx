@@ -197,7 +197,7 @@ export default function App() {
         setIsSettingsOpen(true);
       }
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Failed to load connection settings.");
+      setToast(error instanceof Error ? error.message : "无法加载连接设置。");
     }
   }
 
@@ -307,7 +307,7 @@ export default function App() {
       dispatchForSourceTab({
         type: "fail_request",
         cardId: card.id,
-        error: error instanceof Error ? error.message : "Translation failed.",
+        error: error instanceof Error ? error.message : "翻译失败，请重试。",
       });
     }
   }
@@ -350,7 +350,7 @@ export default function App() {
       dispatchForSourceTab({
         type: "fail_request",
         cardId,
-        error: error instanceof Error ? error.message : "Question failed.",
+        error: error instanceof Error ? error.message : "提问失败，请重试。",
       });
     }
   }
@@ -371,7 +371,7 @@ export default function App() {
       await handleAsk(cardId, card.lastQuestion);
       return;
     }
-    setToast("Nothing to retry yet in this card.");
+    setToast("这张卡片还没有可重试的内容。");
   }
 
   async function handleConnectionTest() {
@@ -383,7 +383,7 @@ export default function App() {
       const result = await testConnectionSettings(connectionSettings);
       setConnectionNotice(result.message);
     } catch (error) {
-      setConnectionNotice(error instanceof Error ? error.message : "Connection test failed.");
+      setConnectionNotice(error instanceof Error ? error.message : "连接测试失败。");
     } finally {
       setIsTestingConnection(false);
     }
@@ -398,9 +398,9 @@ export default function App() {
       const nextConfig = await saveConnectionSettings(connectionSettings);
       setConfig(nextConfig);
       setIsSettingsOpen(false);
-      setToast(`Now using ${nextConfig.connectionLabel}.`);
+      setToast(`已切换到 ${nextConfig.connectionLabel}`);
     } catch (error) {
-      setConnectionNotice(error instanceof Error ? error.message : "Failed to save settings.");
+      setConnectionNotice(error instanceof Error ? error.message : "保存设置失败。");
     } finally {
       setIsSavingConnection(false);
     }
@@ -890,6 +890,7 @@ export default function App() {
             model={config.model}
             isUpdatingModel={isSavingConnection || isTestingConnection}
             questionActionLabel={config.questionActionLabel}
+            translationTrigger={config.translationTrigger}
             onOpenSettings={() => void openSettingsModal()}
             onAsk={handleAsk}
             onDismiss={(cardId) => dispatchCardAction({ type: "dismiss_card", cardId })}
