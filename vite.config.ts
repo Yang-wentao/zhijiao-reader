@@ -18,6 +18,7 @@ export default defineConfig({
     setupFiles: "./src/test/setup.ts",
     // Only run the repo's own tests — stale project copies (agent worktrees,
     // manual backups) otherwise get picked up and double-count the suite.
-    exclude: [...configDefaults.exclude, ".claude/**", "无关文件备用/**", "workspace-misc/**", "测试截图/**"],
+    // cloud/ uses node:test (run with `npm test` inside cloud/), not vitest.
+    exclude: [...configDefaults.exclude, "cloud/**", ".claude/**", "无关文件备用/**", "workspace-misc/**", "测试截图/**"],
   },
 });
