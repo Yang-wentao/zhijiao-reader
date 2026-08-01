@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知交云 · 管理台</title>
+<style>
+  :root { font-family: -apple-system, "PingFang SC", "Segoe UI", sans-serif; color: #1f2329; }
+  body { margin: 0; min-height: 100vh; background: linear-gradient(135deg, #f6f2eb 0%, #f4efe7 40%, #e8edf7 100%); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; color: #1f355e; }
+  .sub { color: #66748f; font-size: 0.9rem; margin-bottom: 24px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: rgba(255,255,255,0.88); border: 1px solid rgba(31,35,41,0.08); border-radius: 16px; padding: 14px 16px; box-shadow: 0 10px 24px rgba(19,33,68,0.07); }
+  .card .k { font-size: 0.78rem; color: #7b5b34; text-transform: uppercase; letter-spacing: 0.06em; }
+  .card .v { font-size: 1.5rem; font-weight: 650; color: #1f355e; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .card .s { font-size: 0.78rem; color: #66748f; margin-top: 2px; }
+  section { background: rgba(255,255,255,0.88); border: 1px solid rgba(31,35,41,0.08); border-radius: 18px; padding: 18px; box-shadow: 0 10px 24px rgba(19,33,68,0.07); margin-bottom: 20px; }
+  section h2 { margin: 0 0 12px; font-size: 1.02rem; color: #1f355e; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(31,35,41,0.07); white-space: nowrap; }
+  th { color: #66748f; font-weight: 500; font-size: 0.78rem; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .bar { width: 130px; height: 8px; border-radius: 99px; background: rgba(31,53,94,0.1); overflow: hidden; display: inline-block; vertical-align: middle; }
+  .bar i { display: block; height: 100%; background: #1f355e; border-radius: inherit; }
+  .bar.warn i { background: #b0642a; }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 0.75rem; }
+  .tag.on { background: rgba(46,125,50,0.12); color: #2e7d32; }
+  .tag.off { background: rgba(176,49,49,0.12); color: #a22929; }
+  button { border: 0; border-radius: 99px; padding: 7px 14px; cursor: pointer; font-size: 0.84rem; background: rgba(31,53,94,0.08); color: #1f355e; }
+  button.primary { background: #1f355e; color: #fff; }
+  button.mini { padding: 4px 10px; font-size: 0.78rem; }
+  input { border: 1px solid rgba(31,35,41,0.14); border-radius: 10px; padding: 8px 10px; font: inherit; background: #fff; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .muted { color: #8a94a6; }
+  #login { max-width: 420px; margin: 12vh auto 0; text-align: center; }
+  #login input { width: 100%; box-sizing: border-box; margin: 14px 0; }
+  .err { color: #a22929; font-size: 0.85rem; min-height: 1.2em; }
+  .table-scroll { overflow-x: auto; }
+  code { background: rgba(31,53,94,0.07); padding: 2px 6px; border-radius: 6px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" hidden>
+    <h1>知交云 · 管理台</h1>
+    <p class="sub">输入管理密钥（cloud/.env 里的 ADMIN_TOKEN）</p>
+    <input id="tokenInput" type="password" placeholder="ADMIN_TOKEN" autocomplete="current-password">
+    <div class="err" id="loginErr"></div>
+    <button class="primary" onclick="saveToken()">进入</button>
+  </div>
+
+  <div id="main" hidden>
+    <h1>知交云 · 管理台</h1>
+    <p class="sub">zhijiao-cloud 运行概览 <button class="mini" onclick="refresh()">刷新</button> <button class="mini" onclick="logout()">退出</button></p>
+    <div class="cards" id="cards"></div>
+
+    <section>
+      <h2>激活码</h2>
+      <div class="row" style="margin-bottom:12px">
+        <input id="newLabel" placeholder="备注（如：张三）" style="width:150px">
+        <input id="newQuota" type="number" value="3000000" style="width:130px" title="每月 token 额度">
+        <button class="primary" onclick="createCode()">发新码</button>
+        <span class="muted" id="createMsg"></span>
+      </div>
+      <div class="table-scroll"><table id="codesTable">
+        <thead><tr><th>激活码</th><th>备注</th><th>状态</th><th>本月用量</th><th></th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>最近请求</h2>
+      <div class="table-scroll"><table id="usageTable">
+        <thead><tr><th>时间</th><th>用户</th><th>类型</th><th>输入</th><th>输出</th><th>模型</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let token = localStorage.getItem("zj-admin-token") || "";
+
+function fmt(n) { return Number(n).toLocaleString("zh-CN"); }
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(options.headers||{}) },
+  });
+  if (res.status === 401 || res.status === 403) { showLogin("密钥不对或未配置 ADMIN_TOKEN"); throw new Error("unauthorized"); }
+  if (!res.ok) throw new Error((await res.json().catch(()=>({}))).error || `HTTP ${res.status}`);
+  return res.json();
+}
+
+function showLogin(err = "") { $("login").hidden = false; $("main").hidden = true; $("loginErr").textContent = err; }
+function saveToken() { token = $("tokenInput").value.trim(); localStorage.setItem("zj-admin-token", token); refresh(); }
+function logout() { localStorage.removeItem("zj-admin-token"); token = ""; showLogin(); }
+
+async function refresh() {
+  try {
+    const [ov, codes, usage] = await Promise.all([
+      api("/admin/api/overview"), api("/admin/api/codes"), api("/admin/api/usage?limit=50"),
+    ]);
+    $("login").hidden = true; $("main").hidden = false;
+    $("cards").innerHTML = [
+      ["激活码", `${ov.codesActive} / ${ov.codesTotal}`, "启用 / 总数"],
+      ["今日请求", fmt(ov.today.requests), `${fmt(ov.today.tokens)} tokens`],
+      ["本月请求", fmt(ov.month.requests), `${fmt(ov.month.tokens)} tokens`],
+      ["累计请求", fmt(ov.allTime.requests), `${fmt(ov.allTime.tokens)} tokens`],
+    ].map(([k,v,s]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
+
+    $("codesTable").querySelector("tbody").innerHTML = codes.map((c) => {
+      const pct = Math.min(100, Math.round(c.used_tokens / c.quota_tokens * 100));
+      return `<tr>
+        <td><code>${c.code}</code></td>
+        <td>${c.label || '<span class="muted">—</span>'}</td>
+        <td><span class="tag ${c.active ? "on" : "off"}">${c.active ? "启用" : "停用"}</span></td>
+        <td class="num">${fmt(c.used_tokens)} / ${fmt(c.quota_tokens)}</td>
+        <td><span class="bar ${pct > 85 ? "warn" : ""}"><i style="width:${pct}%"></i></span> <span class="muted">${pct}%</span></td>
+        <td>
+          <button class="mini" onclick="toggleCode('${c.code}', ${c.active ? "false" : "true"})">${c.active ? "停用" : "启用"}</button>
+          <button class="mini" onclick="changeQuota('${c.code}', ${c.quota_tokens})">调额</button>
+        </td>
+      </tr>`;
+    }).join("");
+
+    $("usageTable").querySelector("tbody").innerHTML = usage.map((u) => `<tr>
+      <td>${fmtTime(u.ts)}</td><td>${u.label || u.code}</td><td>${u.kind === "translate" ? "翻译" : "追问"}</td>
+      <td class="num">${fmt(u.input_tokens)}</td><td class="num">${fmt(u.output_tokens)}</td><td class="muted">${u.model}</td>
+    </tr>`).join("") || '<tr><td colspan="6" class="muted">还没有请求记录</td></tr>';
+  } catch (e) { if (e.message !== "unauthorized") alert(e.message); }
+}
+
+async function createCode() {
+  const label = $("newLabel").value.trim();
+  const quota = Number($("newQuota").value) || 3000000;
+  const row = await api("/admin/api/codes", { method: "POST", body: JSON.stringify({ label, quotaTokens: quota }) });
+  $("createMsg").textContent = `已创建：${row.code}`;
+  $("newLabel").value = "";
+  refresh();
+}
+async function toggleCode(code, active) {
+  await api(`/admin/api/codes/${code}/active`, { method: "POST", body: JSON.stringify({ active: active === "true" || active === true }) });
+  refresh();
+}
+async function changeQuota(code, current) {
+  const next = prompt("新的每月 token 额度：", current);
+  if (!next) return;
+  await api(`/admin/api/codes/${code}/quota`, { method: "POST", body: JSON.stringify({ quotaTokens: Number(next) }) });
+  refresh();
+}
+
+token ? refresh() : showLogin();
+</script>
+</body>
+</html>

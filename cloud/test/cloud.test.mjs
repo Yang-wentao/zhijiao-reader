@@ -62,7 +62,7 @@ function startMockUpstream() {
   });
 }
 
-function startApp(db, upstreamPort) {
+function startApp(db, upstreamPort, adminToken = "") {
   const app = createApp({
     db,
     config: {
@@ -70,6 +70,7 @@ function startApp(db, upstreamPort) {
       model: "deepseek-v4-flash",
       baseUrl: `http://127.0.0.1:${upstreamPort}`,
       thinkingMode: "disabled",
+      adminToken,
     },
   });
   return new Promise((resolve) => {
@@ -137,6 +138,69 @@ test("exhausted quota → 402 and no upstream call", async () => {
   const body = await blocked.json();
   assert.ok(body.error.includes("额度"));
 
+  server.close();
+  upstream.close();
+  db.close();
+});
+
+test("admin api: token gate + code management", async () => {
+  const db = new CloudDb(":memory:");
+  db.recordUsage(db.createCode({ label: "a", quotaTokens: 100 }).code, {
+    kind: "translate",
+    inputTokens: 10,
+    outputTokens: 5,
+    model: "m",
+  });
+  const upstream = await startMockUpstream();
+  const server = await startApp(db, upstream.address().port, "secret-token");
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  // Wrong / missing token → 401.
+  const anon = await fetch(`${base}/admin/api/overview`);
+  assert.equal(anon.status, 401);
+
+  const auth = { Authorization: "Bearer secret-token", "Content-Type": "application/json" };
+  const overview = await (await fetch(`${base}/admin/api/overview`, { headers: auth })).json();
+  assert.equal(overview.codesTotal, 1);
+  assert.equal(overview.allTime.requests, 1);
+  assert.equal(overview.allTime.tokens, 15);
+
+  // Create + disable a code through the HTTP API.
+  const created = await (
+    await fetch(`${base}/admin/api/codes`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ label: "网页发码", quotaTokens: 500 }),
+    })
+  ).json();
+  assert.match(created.code, /^ZJ-/);
+  const disabled = await (
+    await fetch(`${base}/admin/api/codes/${created.code}/active`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ active: false }),
+    })
+  ).json();
+  assert.equal(disabled.active, 0);
+
+  const usage = await (await fetch(`${base}/admin/api/usage?limit=10`, { headers: auth })).json();
+  assert.equal(usage.length, 1);
+  assert.equal(usage[0].label, "a");
+
+  server.close();
+  upstream.close();
+  db.close();
+});
+
+test("admin api disabled without ADMIN_TOKEN", async () => {
+  const db = new CloudDb(":memory:");
+  const upstream = await startMockUpstream();
+  const server = await startApp(db, upstream.address().port, "");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const res = await fetch(`${base}/admin/api/overview`, {
+    headers: { Authorization: "Bearer anything" },
+  });
+  assert.equal(res.status, 403);
   server.close();
   upstream.close();
   db.close();

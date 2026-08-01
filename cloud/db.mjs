@@ -131,6 +131,42 @@ export class CloudDb {
       .all(code);
   }
 
+  // Aggregate stats for the admin dashboard. "Today"/"this month" use UTC
+  // boundaries (usage_log.ts is ISO-UTC) — close enough for ops monitoring.
+  overviewStats(now = new Date()) {
+    const codes = this.db
+      .prepare("SELECT COUNT(*) AS total, SUM(active) AS active FROM codes")
+      .get();
+    const since = (iso) =>
+      this.db
+        .prepare(
+          `SELECT COUNT(*) AS requests,
+                  COALESCE(SUM(input_tokens + output_tokens), 0) AS tokens
+           FROM usage_log WHERE ts >= ?`,
+        )
+        .get(iso);
+    const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return {
+      codesTotal: codes.total ?? 0,
+      codesActive: codes.active ?? 0,
+      today: since(dayStart.toISOString()),
+      month: since(monthStart.toISOString()),
+      allTime: since("1970-01-01T00:00:00.000Z"),
+    };
+  }
+
+  recentUsage(limit = 50) {
+    return this.db
+      .prepare(
+        `SELECT u.ts, u.kind, u.input_tokens, u.output_tokens, u.model, u.code,
+                COALESCE(c.label, '') AS label
+         FROM usage_log u LEFT JOIN codes c ON c.code = u.code
+         ORDER BY u.id DESC LIMIT ?`,
+      )
+      .all(limit);
+  }
+
   close() {
     this.db.close();
   }

@@ -20,6 +20,8 @@ export function createApp({ db, config }) {
     res.json({ ok: true, service: "zhijiao-cloud" });
   });
 
+  attachAdminRoutes(app, { db, adminToken: config.adminToken });
+
   // Activation-code auth for everything below.
   app.use("/v1", (req, res, next) => {
     if (req.path === "/health") {
@@ -104,6 +106,75 @@ export function createApp({ db, config }) {
   });
 
   return app;
+}
+
+// Admin dashboard: /admin serves a single-page console; /admin/api/* requires
+// the ADMIN_TOKEN from cloud/.env. With no token configured the whole area is
+// disabled (403) so a fresh deploy can never be managed anonymously.
+function attachAdminRoutes(app, { db, adminToken }) {
+  app.get("/admin", (_req, res) => {
+    res.sendFile(join(CLOUD_DIR, "public", "admin.html"));
+  });
+
+  app.use("/admin/api", (req, res, next) => {
+    if (!adminToken) {
+      res.status(403).json({ error: "管理台未启用：请在 cloud/.env 中设置 ADMIN_TOKEN 后重启。" });
+      return;
+    }
+    const header = req.headers.authorization ?? "";
+    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    if (token !== adminToken) {
+      res.status(401).json({ error: "管理密钥不正确。" });
+      return;
+    }
+    next();
+  });
+
+  app.get("/admin/api/overview", (_req, res) => {
+    res.json(db.overviewStats());
+  });
+
+  app.get("/admin/api/codes", (_req, res) => {
+    res.json(db.listCodes());
+  });
+
+  app.post("/admin/api/codes", (req, res) => {
+    const label = typeof req.body?.label === "string" ? req.body.label.trim() : "";
+    const quotaTokens = Number(req.body?.quotaTokens);
+    if (!Number.isFinite(quotaTokens) || quotaTokens <= 0) {
+      res.status(400).json({ error: "额度必须是正数。" });
+      return;
+    }
+    res.json(db.createCode({ label, quotaTokens }));
+  });
+
+  app.post("/admin/api/codes/:code/active", (req, res) => {
+    const ok = db.setActive(req.params.code, Boolean(req.body?.active));
+    if (!ok) {
+      res.status(404).json({ error: "找不到这个激活码。" });
+      return;
+    }
+    res.json(db.getCode(req.params.code));
+  });
+
+  app.post("/admin/api/codes/:code/quota", (req, res) => {
+    const quotaTokens = Number(req.body?.quotaTokens);
+    if (!Number.isFinite(quotaTokens) || quotaTokens <= 0) {
+      res.status(400).json({ error: "额度必须是正数。" });
+      return;
+    }
+    const ok = db.setQuota(req.params.code, quotaTokens);
+    if (!ok) {
+      res.status(404).json({ error: "找不到这个激活码。" });
+      return;
+    }
+    res.json(db.getCode(req.params.code));
+  });
+
+  app.get("/admin/api/usage", (req, res) => {
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
+    res.json(db.recentUsage(limit));
+  });
 }
 
 async function streamToClient(req, res, { db, config, kind, temperature, messages }) {
@@ -202,6 +273,7 @@ export function loadConfigFromEnv(env = process.env) {
     thinkingMode: env.DEEPSEEK_THINKING_MODE === "enabled" ? "enabled" : "disabled",
     port: Number(env.PORT || 8787),
     dbPath: env.CLOUD_DB_PATH || join(CLOUD_DIR, "data", "zhijiao-cloud.db"),
+    adminToken: env.ADMIN_TOKEN?.trim() || "",
   };
 }
 
