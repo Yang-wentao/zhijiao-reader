@@ -181,6 +181,11 @@ async function streamToClient(req, res, { db, config, kind, temperature, message
         console.error("[zhijiao-cloud] failed to record usage:", error);
       }
     }
+    // One access-log line per request so `tail -f cloud.log` shows traffic live.
+    console.log(
+      `[zhijiao-cloud] ${new Date().toISOString()} ${kind} 用户=${row.label || row.code} ` +
+        `输入=${inputTokens} 输出=${outputTokens} tokens${clientGone ? "（客户端中途断开）" : ""}`,
+    );
   }
 }
 
