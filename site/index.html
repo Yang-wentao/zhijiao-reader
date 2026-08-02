@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知交文献阅读 — 本地运行的 AI 文献阅读器</title>
+<meta name="description" content="左边读 PDF，右边看译文。公式渲染扛得住真实论文，划线批注写回 PDF 文件，本地优先，macOS / Windows 桌面版免费下载。">
+<link rel="icon" href="icon.png">
+<meta property="og:title" content="知交文献阅读">
+<meta property="og:description" content="左边读 PDF，右边看译文。公式不再变成乱码。">
+<meta property="og:image" content="hero.png">
+<style>
+  :root {
+    --ink: #1f2329;
+    --navy: #1f355e;
+    --muted: #66748f;
+    --line: rgba(31, 35, 41, 0.1);
+    --card: rgba(255, 255, 255, 0.86);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Songti SC", serif;
+    --sans: "Avenir Next", -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--serif);
+    color: var(--ink);
+    line-height: 1.65;
+    background:
+      radial-gradient(circle at 12% -5%, rgba(196, 218, 255, 0.5), transparent 42%),
+      linear-gradient(150deg, #f7f3ec 0%, #f4efe7 38%, #e9edf7 100%);
+    background-attachment: fixed;
+  }
+  .wrap { width: min(1120px, 92vw); margin: 0 auto; }
+  a { color: var(--navy); }
+
+  /* ── header ── */
+  header { padding: 22px 0; }
+  .bar { display: flex; align-items: center; gap: 12px; }
+  .bar img { width: 34px; height: 34px; border-radius: 8px; }
+  .bar strong { font-family: var(--sans); font-size: 1.05rem; color: var(--navy); }
+  .bar nav { margin-left: auto; display: flex; gap: 20px; font-family: var(--sans); font-size: 0.92rem; }
+  .bar nav a { color: var(--muted); text-decoration: none; }
+  .bar nav a:hover { color: var(--navy); }
+
+  /* ── hero ── */
+  .hero { padding: 46px 0 10px; text-align: center; }
+  .hero h1 { font-size: clamp(2.1rem, 5vw, 3.1rem); margin: 0 0 14px; color: var(--navy); letter-spacing: -0.01em; }
+  .hero .lede { font-size: clamp(1.02rem, 2.2vw, 1.22rem); color: #3c485e; margin: 0 auto 8px; max-width: 40ch; }
+  .hero .sub { color: var(--muted); font-size: 0.98rem; margin: 0 auto 28px; max-width: 46ch; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .btn {
+    font-family: var(--sans); font-size: 0.98rem; font-weight: 600;
+    padding: 13px 26px; border-radius: 999px; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
+  }
+  .btn-primary { background: var(--navy); color: #fff; box-shadow: 0 8px 20px rgba(19, 33, 68, 0.22); }
+  .btn-ghost { background: rgba(31, 53, 94, 0.08); color: var(--navy); }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(19, 33, 68, 0.24); }
+  .cta-note { font-size: 0.86rem; color: var(--muted); }
+  .cta-note a { text-decoration: none; border-bottom: 1px solid rgba(31,53,94,0.25); }
+
+  .shot { margin: 34px auto 0; max-width: 1040px; }
+  .shot img {
+    width: 100%; display: block; border-radius: 16px;
+    border: 1px solid var(--line);
+    box-shadow: 0 26px 60px rgba(19, 33, 68, 0.18);
+  }
+  .shot figcaption { font-size: 0.86rem; color: var(--muted); text-align: center; margin-top: 12px; }
+
+  /* ── sections ── */
+  section { padding: 58px 0; }
+  h2 { font-family: var(--sans); font-size: 1.5rem; color: var(--navy); margin: 0 0 8px; }
+  .section-lede { color: var(--muted); margin: 0 0 28px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .feature {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 22px 22px 24px; box-shadow: 0 12px 28px rgba(19, 33, 68, 0.07);
+  }
+  .feature h3 { font-family: var(--sans); font-size: 1.04rem; color: var(--navy); margin: 0 0 8px; }
+  .feature p { margin: 0; font-size: 0.96rem; color: #3c485e; }
+  .feature .icon { font-size: 1.5rem; line-height: 1; display: block; margin-bottom: 10px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 28px rgba(19,33,68,0.07); }
+  th, td { padding: 13px 18px; text-align: left; border-bottom: 1px solid var(--line); font-size: 0.95rem; }
+  th { font-family: var(--sans); font-size: 0.88rem; color: var(--navy); background: rgba(31,53,94,0.045); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { color: var(--muted); white-space: nowrap; }
+
+  /* ── downloads ── */
+  .dl-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .dl {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px;
+    box-shadow: 0 12px 28px rgba(19,33,68,0.07); display: flex; flex-direction: column; gap: 12px;
+  }
+  .dl h3 { font-family: var(--sans); font-size: 1.02rem; margin: 0; color: var(--navy); }
+  .dl p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+  .dl .links { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+  .dl a.file {
+    font-family: var(--sans); font-size: 0.92rem; text-decoration: none; color: var(--navy);
+    background: rgba(31,53,94,0.07); padding: 10px 14px; border-radius: 10px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    transition: background 0.14s ease;
+  }
+  .dl a.file:hover { background: rgba(31,53,94,0.13); }
+  .dl a.file span { color: var(--muted); font-size: 0.82rem; }
+
+  details.note {
+    margin-top: 18px; background: rgba(102, 136, 194, 0.09); border: 1px solid rgba(102, 136, 194, 0.22);
+    border-radius: 14px; padding: 14px 18px;
+  }
+  details.note summary { font-family: var(--sans); font-size: 0.94rem; color: var(--navy); cursor: pointer; font-weight: 600; }
+  details.note[open] summary { margin-bottom: 10px; }
+  details.note p, details.note li { font-size: 0.92rem; color: #3c485e; }
+  details.note ol { margin: 8px 0 0; padding-left: 20px; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.86em;
+    background: rgba(31,53,94,0.08); padding: 2px 7px; border-radius: 6px;
+  }
+  pre { background: rgba(31,53,94,0.06); padding: 12px 14px; border-radius: 10px; overflow-x: auto; margin: 10px 0 0; }
+  pre code { background: none; padding: 0; }
+
+  /* ── footer ── */
+  footer { padding: 40px 0 60px; border-top: 1px solid var(--line); margin-top: 30px; font-size: 0.9rem; color: var(--muted); }
+  footer .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--navy); }
+  footer .spacer { margin-left: auto; }
+
+  /* On phones the anchor nav squeezes into unreadable vertical slivers, and
+     the page is short enough to scroll — so drop it and keep the brand. */
+  @media (max-width: 720px) {
+    .bar nav { display: none; }
+    .bar strong { white-space: nowrap; }
+    section { padding: 42px 0; }
+    th, td { padding: 11px 13px; font-size: 0.9rem; }
+    footer .spacer { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="bar">
+      <img src="icon.png" alt="知交文献阅读">
+      <strong>知交文献阅读</strong>
+      <nav>
+        <a href="#features">功能</a>
+        <a href="#plans">使用方式</a>
+        <a href="#download">下载</a>
+        <a href="https://github.com/Yang-wentao/zhijiao-reader">开源代码</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1>左边读 PDF，右边看译文</h1>
+    <p class="lede">一个本地运行的 AI 文献阅读器。选中一段英文，两秒内看懂它——公式不再变成乱码。</p>
+    <p class="sub">为中文学术阅读做的：数学公式、术语解释、同段追问，以及能写回 PDF 文件的划线批注。</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#download">下载桌面版</a>
+      <a class="btn btn-ghost" href="https://github.com/Yang-wentao/zhijiao-reader">在 GitHub 上查看源码</a>
+    </div>
+    <p class="cta-note">免费开源 · macOS / Windows / Linux · 自带 API key 即可使用</p>
+
+    <figure class="shot">
+      <img src="hero.png" alt="知交文献阅读界面：左栏 PDF，右栏中文译文与渲染好的数学公式" loading="eager">
+      <figcaption>左边是 PDF 里复制出来的一团 <code>Sigma^(-1)</code>，右边是渲染好的公式与编号。</figcaption>
+    </figure>
+  </div>
+
+  <section id="features">
+    <h2>它解决什么问题</h2>
+    <p class="section-lede">如果你读英文论文时被这三件事烦过，这个工具就是为你做的。</p>
+    <div class="grid">
+      <div class="feature">
+        <span class="icon">∑</span>
+        <h3>公式扛得住真实论文</h3>
+        <p>翻译区带完整的 Markdown + KaTeX 渲染，并对模型常犯的公式错误做了多层自动修复：漏写定界符、编号写错位置、上标冲突。通用翻译软件在这里全军覆没。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">✍️</span>
+        <h3>划线批注写进 PDF 文件</h3>
+        <p>五色高亮加批注卡片，<code>⌘S</code> 保存后直接写入 PDF 文件本身。用 WPS、Adobe、预览打开同一个文件都看得见；别的软件做的高亮，这里也读得出来。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">🔒</span>
+        <h3>本地优先，数据不被绑架</h3>
+        <p>应用跑在你自己的电脑上，PDF 文件从不离开本地，API key 只存本机。摘录可以直接追加到你的 markdown 笔记文件夹（Obsidian 兼容）。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">📖</span>
+        <h3>为长时间阅读设计</h3>
+        <p>暖纸色背景、衬线正文、可调字号行距，向经典阅读器的双栏布局致敬。多标签页瞬时切换，卡片可折叠、可复制、可重试。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">💬</span>
+        <h3>看不懂就接着问</h3>
+        <p>每段译文都是一张卡片，可以就这一段继续追问，上下文一直保留。术语解释会单独成段列出。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">🔌</span>
+        <h3>模型随你换</h3>
+        <p>DeepSeek、上海交大 API、OpenAI、本地 Codex，或任意 OpenAI 兼容接口，设置里一键切换、保存前可测试连接。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="plans">
+    <h2>两种使用方式，同一个应用</h2>
+    <p class="section-lede">没有阉割版：功能完全一致，区别只在于模型额度谁来出。</p>
+    <table>
+      <thead>
+        <tr><th></th><th>自带 API key（免费）</th><th>知交订阅</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>需要做什么</td><td>自己申请 API key 并填入</td><td>填一个激活码</td></tr>
+        <tr><td>模型</td><td>你选：DeepSeek / SJTU / OpenAI / 自定义</td><td>内置 DeepSeek v4-flash</td></tr>
+        <tr><td>费用</td><td>软件免费，模型按你自己的账户计费</td><td>订阅内含额度，无需另外申请 API</td></tr>
+        <tr><td>适合谁</td><td>已有 key，或想完全自己掌控</td><td>不想折腾 API 配置的读者</td></tr>
+      </tbody>
+    </table>
+    <details class="note">
+      <summary>想要知交订阅的激活码？</summary>
+      <p>目前处于小范围测试阶段，激活码由开发者手动发放。如果你是同学或同事，直接找我要即可；也欢迎在 GitHub 上开 issue 说明用途。</p>
+    </details>
+  </section>
+
+  <section id="download">
+    <h2>下载</h2>
+    <p class="section-lede">当前版本 v1.1.1 · 免费 · 开源</p>
+    <div class="dl-grid">
+      <div class="dl">
+        <h3>macOS</h3>
+        <p>不确定芯片类型？点屏幕左上角 <strong>  → 关于本机</strong>，看「芯片」那一项。</p>
+        <div class="links">
+          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download/ZhijiaoReader-1.1.1-arm64.dmg">Apple 芯片（M1–M4）<span>.dmg</span></a>
+          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download/ZhijiaoReader-1.1.1-x64.dmg">Intel 芯片<span>.dmg</span></a>
+        </div>
+      </div>
+      <div class="dl">
+        <h3>Windows</h3>
+        <p>Windows 10 / 11，64 位。安装向导会引导完成。</p>
+        <div class="links">
+          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download/ZhijiaoReader-Setup-1.1.1-x64.exe">安装程序<span>.exe</span></a>
+        </div>
+      </div>
+      <div class="dl">
+        <h3>Linux / 源码</h3>
+        <p>AppImage 开箱即用；或者克隆仓库自己跑。</p>
+        <div class="links">
+          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest">AppImage 与全部版本<span>Releases</span></a>
+          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader">从源码运行<span>GitHub</span></a>
+        </div>
+      </div>
+    </div>
+
+    <details class="note" open>
+      <summary>⚠️ 第一次打开会被系统拦下，这是正常的</summary>
+      <p>本项目还没有购买苹果和微软的代码签名证书（每年数千元），所以首次启动系统会警告。源码全部公开，你可以自己检视、自己构建。</p>
+      <p><strong>macOS：</strong>提示「无法打开，因为 Apple 无法检查它是否包含恶意软件」时——</p>
+      <ol>
+        <li>在「访达」里找到 <code>/应用程序/知交文献阅读.app</code></li>
+        <li><strong>右键</strong> → 点「打开」→ 弹窗里再点「打开」</li>
+        <li>之后双击就能正常启动了</li>
+      </ol>
+      <p>或者在终端里执行一行命令：</p>
+      <pre><code>xattr -dr com.apple.quarantine "/Applications/知交文献阅读.app"</code></pre>
+      <p><strong>Windows：</strong>弹出「Windows 已保护你的电脑」时，点「更多信息」→「仍要运行」。</p>
+    </details>
+
+    <details class="note">
+      <summary>装好之后怎么开始</summary>
+      <ol>
+        <li>打开应用，点右上角<strong>设置</strong></li>
+        <li>选服务提供方：有激活码就选「知交订阅」并粘贴激活码；否则选 DeepSeek 等并填入自己的 API key</li>
+        <li>点「测试连接」，通过后保存</li>
+        <li>把 PDF 拖进左栏，选中一段英文，右栏就会出现译文</li>
+      </ol>
+      <p>提示：扫描版（文字不能选中的）PDF 暂不支持。</p>
+    </details>
+  </section>
+
+  <footer>
+    <div class="row">
+      <span>知交文献阅读 · MIT 开源</span>
+      <a href="https://github.com/Yang-wentao/zhijiao-reader">GitHub</a>
+      <a href="https://github.com/Yang-wentao/zhijiao-reader/releases">更新记录</a>
+      <a href="https://github.com/Yang-wentao/zhijiao-reader/issues">反馈问题</a>
+      <span class="spacer">与 AI 结对开发</span>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

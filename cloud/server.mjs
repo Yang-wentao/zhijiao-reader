@@ -20,6 +20,11 @@ export function createApp({ db, config }) {
     res.json({ ok: true, service: "zhijiao-cloud" });
   });
 
+  // Landing page (repo's site/ directory) served from the same process, so the
+  // root domain and the API share one tunnel and one deploy. Static files only
+  // — /v1 and /admin are matched before this ever runs.
+  app.use(express.static(join(CLOUD_DIR, "..", "site"), { extensions: ["html"] }));
+
   attachAdminRoutes(app, { db, adminToken: config.adminToken });
 
   // Activation-code auth for everything below.
