@@ -1365,6 +1365,34 @@ textarea {
   outline: none;
 }
 
+/* "高级：服务地址" disclosure inside the 知交云 section — self-hosters can
+   point the app at their own gateway without the field cluttering the
+   common single-input path. */
+.settings-advanced {
+  margin-top: 10px;
+}
+
+.settings-advanced summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: #66748f;
+  user-select: none;
+}
+
+.settings-advanced summary:hover {
+  color: #1f355e;
+}
+
+.settings-advanced input {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid rgba(31, 35, 41, 0.12);
+  border-radius: 14px;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
 .settings-notes-grid {
   margin-top: 16px;
   padding-top: 16px;

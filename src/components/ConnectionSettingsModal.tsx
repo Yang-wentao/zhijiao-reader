@@ -13,12 +13,26 @@ type ConnectionSettingsModalProps = {
   onTest: () => void;
 };
 
-const PROVIDER_OPTIONS = [
-  { value: "codex", label: "Local Codex" },
-  { value: "deepseek", label: "DeepSeek" },
-  { value: "sjtu", label: "SJTU API" },
-  { value: "openai", label: "OpenAI" },
-  { value: "custom", label: "Custom API" },
+// Grouped so the hosted option reads as the easy default, and the
+// bring-your-own-key providers stay one click away rather than hidden.
+const PROVIDER_GROUPS = [
+  {
+    label: "订阅版",
+    options: [{ value: "cloud", label: "知交云（推荐 · 无需申请 API）" }],
+  },
+  {
+    label: "自带 API key（免费）",
+    options: [
+      { value: "deepseek", label: "DeepSeek" },
+      { value: "sjtu", label: "SJTU API" },
+      { value: "openai", label: "OpenAI" },
+      { value: "custom", label: "Custom API" },
+    ],
+  },
+  {
+    label: "高级",
+    options: [{ value: "codex", label: "Local Codex" }],
+  },
 ] as const;
 
 const CODEX_MODEL_OPTIONS = ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"] as const;
@@ -69,11 +83,60 @@ export function ConnectionSettingsModal({
   onSave,
   onTest,
 }: ConnectionSettingsModalProps) {
-  const activeProvider = settings?.activeProvider ?? "codex";
+  const activeProvider = settings?.activeProvider ?? "cloud";
   const currentSection = useMemo(() => {
     if (!settings) {
       return null;
     }
+    // 知交云：activation code is the only required field. Base URL is exposed
+    // for self-hosters but hidden behind a details toggle so the common path
+    // stays a single input.
+    if (activeProvider === "cloud") {
+      return (
+        <>
+          <label className="settings-field settings-field-wide">
+            <span>激活码</span>
+            <input
+              aria-label="Activation code"
+              placeholder="ZJ-XXXX-XXXX-XXXX"
+              value={settings.cloud.activationCode}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  cloud: {
+                    ...settings.cloud,
+                    activationCode: event.target.value.trim(),
+                  },
+                })
+              }
+            />
+          </label>
+          <div className="settings-field settings-field-wide">
+            <p className="settings-section-hint">
+              知交云已内置模型与 API 额度，填入激活码即可使用，无需自己申请 API key。
+              点下方「测试连接」可查看本月剩余额度。
+            </p>
+            <details className="settings-advanced">
+              <summary>高级：服务地址</summary>
+              <input
+                aria-label="Cloud base URL"
+                value={settings.cloud.baseUrl}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    cloud: {
+                      ...settings.cloud,
+                      baseUrl: event.target.value,
+                    },
+                  })
+                }
+              />
+            </details>
+          </div>
+        </>
+      );
+    }
+
     if (activeProvider === "codex") {
       return (
         <>
@@ -386,10 +449,14 @@ export function ConnectionSettingsModal({
                 })
               }
             >
-              {PROVIDER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+              {PROVIDER_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
@@ -535,7 +602,9 @@ export function ConnectionSettingsModal({
         </div>
 
         <p className="settings-key-hint">
-          API key 与 Obsidian vault 路径仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。
+          {activeProvider === "cloud"
+            ? "激活码仅保存在本机的用户配置目录。使用知交云时，选中的段落会发送到知交云服务器以调用模型；PDF 文件本身始终留在本地。"
+            : "API key 与 Obsidian vault 路径仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。"}
         </p>
 
         <footer className="settings-modal-footer">

@@ -7,6 +7,7 @@ import type { PdfTabSummary } from "./types";
 const {
   appendNote,
   fetchAppConfig,
+  fetchCloudBalance,
   fetchConnectionSettings,
   saveConnectionSettings,
   streamTranslation,
@@ -18,6 +19,7 @@ const {
 } = vi.hoisted(() => ({
   appendNote: vi.fn(),
   fetchAppConfig: vi.fn(),
+  fetchCloudBalance: vi.fn(),
   fetchConnectionSettings: vi.fn(),
   saveConnectionSettings: vi.fn(),
   streamTranslation: vi.fn(),
@@ -31,6 +33,7 @@ const {
 vi.mock("./lib/api", () => ({
   appendNote,
   fetchAppConfig,
+  fetchCloudBalance,
   fetchConnectionSettings,
   saveConnectionSettings,
   streamTranslation,
@@ -146,8 +149,13 @@ describe("App selection flow", () => {
       notesReady: false,
       translationTrigger: "selection",
     });
+    fetchCloudBalance.mockResolvedValue(null);
     fetchConnectionSettings.mockResolvedValue({
       activeProvider: "codex",
+      cloud: {
+        activationCode: "",
+        baseUrl: "https://api.zhijiao-reader.com",
+      },
       codex: {
         bin: "codex",
         model: "gpt-5.4-mini",

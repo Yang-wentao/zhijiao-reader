@@ -4,7 +4,7 @@
 
 AI-powered paper reader for a two-pane workflow: PDF on the left; streaming translation, term explanations, and follow-up Q&A cards on the right. Highlight and annotate the original text — annotations are written back into the PDF file itself.
 
-> **v1.0.0 — stable release.** 1.0 does not mean "more features"; it means the core loop (*select → understand in seconds → keep reading*) is complete, reliable, and proven by daily real-world use.
+> **v1.1.0 — adds ZhiJiao Cloud.** Paste an activation code and read: the model and quota come from the hosted gateway, no API signup needed. Bring-your-own-key stays free and fully featured. (v1.0.0 was the stable baseline: the core loop — *select → understand in seconds → keep reading* — complete and proven by daily use.)
 
 ## Highlights
 
@@ -79,7 +79,8 @@ Docs: [AGENTS.md](AGENTS.md) (engineering handbook, Chinese) · [GitHub Distribu
 | v0.3.4 | Instant tab switching; OpenAI model picker + reasoning effort |
 | v0.3.5 | PDF highlights + comments written into the file (WPS/Adobe interop); explicit save, undo/redo |
 | v0.3.6 | Fully localized errors; stream stops on client disconnect; model dropdown fixes |
-| **v1.0.0** | **Stable release — no new features; 1.0 means "finished"** |
+| v1.0.0 | Stable release — no new features; 1.0 means "finished" |
+| **v1.1.0** | **ZhiJiao Cloud subscription: activation-code sign-in, quota chip in the header, provider list grouped by subscription / BYOK / advanced** |
 
 ## Known Limits
 

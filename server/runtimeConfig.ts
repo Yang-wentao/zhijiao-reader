@@ -5,11 +5,21 @@ import { spawnSync } from "node:child_process";
 import { userInfo } from "node:os";
 import OpenAI from "openai";
 import type { ReasoningEffort } from "./config.js";
+import { DEFAULT_CLOUD_BASE_URL, fetchCloudBalance, formatTokenCount } from "./providers/cloudProvider.js";
 
-export type ProviderName = "openai" | "codex" | "deepseek" | "sjtu" | "custom";
+export type ProviderName = "cloud" | "openai" | "codex" | "deepseek" | "sjtu" | "custom";
 
 export type ConnectionSettings = {
   activeProvider: ProviderName;
+  /**
+   * 知交云 — the hosted gateway. Only an activation code is needed; the API
+   * key and model live on the server side, so there is nothing else to
+   * configure (and nothing secret stored on the user's machine).
+   */
+  cloud: {
+    activationCode: string;
+    baseUrl: string;
+  };
   codex: {
     bin: string;
     model: string;
@@ -65,6 +75,7 @@ export type ConnectionSettings = {
 };
 
 type PartialConnectionSettings = Partial<ConnectionSettings> & {
+  cloud?: Partial<ConnectionSettings["cloud"]>;
   codex?: Partial<ConnectionSettings["codex"]>;
   deepseek?: Partial<ConnectionSettings["deepseek"]>;
   sjtu?: Partial<ConnectionSettings["sjtu"]>;
@@ -77,6 +88,7 @@ type PartialConnectionSettings = Partial<ConnectionSettings> & {
 
 export type ConnectionTestInput = {
   provider: ProviderName;
+  cloud?: Partial<ConnectionSettings["cloud"]>;
   codex?: Partial<ConnectionSettings["codex"]>;
   deepseek?: Partial<ConnectionSettings["deepseek"]>;
   sjtu?: Partial<ConnectionSettings["sjtu"]>;
@@ -104,6 +116,10 @@ export function buildDefaultConnectionSettings(env: NodeJS.ProcessEnv): Connecti
   const activeProvider = normalizeProvider(env.AI_PROVIDER);
   return {
     activeProvider,
+    cloud: {
+      activationCode: env.ZHIJIAO_CLOUD_CODE?.trim() || "",
+      baseUrl: env.ZHIJIAO_CLOUD_BASE_URL?.trim() || DEFAULT_CLOUD_BASE_URL,
+    },
     codex: {
       bin: env.CODEX_BIN?.trim() || "codex",
       model: env.CODEX_MODEL?.trim() || "gpt-5.4-mini",
@@ -162,6 +178,10 @@ export function mergeConnectionSettings(
 ): ConnectionSettings {
   return {
     activeProvider: normalizeProvider(overrides?.activeProvider || defaults.activeProvider),
+    cloud: {
+      activationCode: overrides?.cloud?.activationCode?.trim() ?? defaults.cloud.activationCode,
+      baseUrl: overrides?.cloud?.baseUrl?.trim() || defaults.cloud.baseUrl,
+    },
     codex: {
       bin: overrides?.codex?.bin?.trim() || defaults.codex.bin,
       model: overrides?.codex?.model?.trim() || defaults.codex.model,
@@ -246,6 +266,23 @@ export async function saveConnectionSettings(settings: ConnectionSettings, fileP
 }
 
 export async function testConnectionSettings(input: ConnectionTestInput): Promise<ConnectionTestResult> {
+  if (input.provider === "cloud") {
+    const activationCode = input.cloud?.activationCode?.trim() || "";
+    if (!activationCode) {
+      return { ok: false, message: "请填写激活码。" };
+    }
+    try {
+      const balance = await fetchCloudBalance(activationCode, input.cloud?.baseUrl);
+      const owner = balance.label ? `${balance.label} · ` : "";
+      return {
+        ok: true,
+        message: `连接成功：${owner}本月剩余 ${formatTokenCount(balance.remainingTokens)} tokens（共 ${formatTokenCount(balance.quotaTokens)}）`,
+      };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "无法连接知交云。" };
+    }
+  }
+
   if (input.provider === "codex") {
     const binary = input.codex?.bin?.trim() || "codex";
     return testCodexBinary(binary);
@@ -309,6 +346,9 @@ export function testCodexBinary(binary: string, runner: CodexRunner = spawnSync 
 }
 
 export function buildConnectionLabel(settings: ConnectionSettings) {
+  if (settings.activeProvider === "cloud") {
+    return "知交云 · 订阅版";
+  }
   if (settings.activeProvider === "codex") {
     return `Local Codex · ${settings.codex.model} · ${settings.codex.reasoningEffort}`;
   }
@@ -328,7 +368,13 @@ export function buildConnectionLabel(settings: ConnectionSettings) {
 }
 
 function normalizeProvider(provider: string | undefined | null): ProviderName {
-  if (provider === "codex" || provider === "deepseek" || provider === "sjtu" || provider === "custom") {
+  if (
+    provider === "cloud" ||
+    provider === "codex" ||
+    provider === "deepseek" ||
+    provider === "sjtu" ||
+    provider === "custom"
+  ) {
     return provider;
   }
   return "openai";

@@ -7,6 +7,7 @@ import { createServer, type Server } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type ReasoningEffort } from "./config.js";
+import { CloudProvider } from "./providers/cloudProvider.js";
 import { CodexProvider } from "./providers/codexProvider.js";
 import { CustomProvider } from "./providers/customProvider.js";
 import { DeepSeekProvider } from "./providers/deepseekProvider.js";
@@ -82,7 +83,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Sta
     createAIRouter({
       getProvider: () => getActiveRuntime(state).provider,
       getProviderName: () => state.activeProviderName,
-      getProviderOptions: () => ["codex", "deepseek", "sjtu", "openai", "custom"],
+      getProviderOptions: () => ["cloud", "deepseek", "sjtu", "openai", "custom", "codex"],
       getCanSwitchProviders: () => true,
       getIsReady: () => getActiveRuntime(state).isReady,
       getModel: () => getActiveRuntime(state).model,
@@ -217,6 +218,7 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
     reasoningEffort: settings.codex.reasoningEffort,
   });
 
+  const cloudReady = settings.cloud.activationCode.trim().length > 0;
   const codexReady = testCodexBinary(settings.codex.bin);
   const openaiReady = settings.openai.apiKey.length > 0;
   const deepseekReady = settings.deepseek.apiKey.length > 0;
@@ -225,6 +227,22 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
     settings.custom.apiKey.length > 0 && settings.custom.baseUrl.length > 0 && settings.custom.model.length > 0;
 
   return {
+    // 知交云：the gateway picks the model, so there is nothing to switch here.
+    cloud: {
+      provider: cloudReady
+        ? new CloudProvider({
+            activationCode: settings.cloud.activationCode,
+            baseUrl: settings.cloud.baseUrl,
+          })
+        : createUnavailableProvider("还没有填写知交云激活码，请在设置中填写。"),
+      isReady: cloudReady,
+      model: "云端模型",
+      modelOptions: ["云端模型"],
+      canSwitchModels: false,
+      reasoningEffort: null,
+      reasoningEffortOptions: [],
+      canSwitchReasoningEffort: false,
+    },
     codex: {
       provider: codexReady
         ? codexProvider
@@ -363,7 +381,7 @@ function buildAppConfig(state: RuntimeState) {
     hasApiKey: state.activeProviderName === "codex" ? false : runtime.isReady,
     isReady: runtime.isReady,
     provider: state.activeProviderName,
-    providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"] satisfies ProviderName[],
+    providerOptions: ["cloud", "deepseek", "sjtu", "openai", "custom", "codex"] satisfies ProviderName[],
     canSwitchProviders: true,
     model: runtime.model,
     modelOptions: runtime.modelOptions,

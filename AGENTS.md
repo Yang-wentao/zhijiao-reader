@@ -277,8 +277,9 @@ electron-builder --config electron-builder.json --publish never
 
 ### 6.2 provider runtime map
 
-`createProviderRuntimeMap(settings)` 会根据配置生成五类 runtime：
+`createProviderRuntimeMap(settings)` 会根据配置生成六类 runtime：
 
+- `cloud`（知交云 —— 订阅版网关，见下方 7.4）
 - `codex`
 - `deepseek`
 - `sjtu`
@@ -368,6 +369,17 @@ interface AIProvider {
 
 - 想办法接入 CLI 的真正流式输出
 - 要么继续优化前端 chunk cadence
+
+### 7.4 知交云（cloud）
+
+`server/providers/cloudProvider.ts` 是唯一**不直接调用模型 API** 的 provider：
+
+- 它把请求转发到 `cloud/` 目录里的网关（部署在开发者自己的机器上），带上激活码
+- 网关负责鉴权、额度检查、用真实 API key 调模型，再把 SSE 流回传
+- 客户端这边没有 API key、没有模型选择、不构建 prompt——这些都归网关
+- `/api/cloud/balance` 代理查询激活码额度，供顶栏 chip 显示
+
+改动知交云相关逻辑时，注意 `cloud/prompts.mjs` 是 `server/prompts.ts` 的刻意副本，两边都有 SYNC NOTE，改 prompt 要同步。
 
 ### 7.3 Prompt 文件
 

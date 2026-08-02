@@ -1,10 +1,12 @@
 import { readSseStream } from "./sse";
 import type {
   AppConfig,
+  CloudBalance,
   ConnectionSettings,
   ConnectionTestResult,
   PassageCard,
   PdfHighlight,
+  ProviderName,
 } from "../types";
 
 type StreamHandlers = {
@@ -24,10 +26,23 @@ export async function updateAppModel(model: string): Promise<AppConfig> {
   return updateAppSettings({ model });
 }
 
-export async function updateAppProvider(
-  provider: "openai" | "codex" | "deepseek" | "sjtu" | "custom",
-): Promise<AppConfig> {
+export async function updateAppProvider(provider: ProviderName): Promise<AppConfig> {
   return updateAppSettings({ provider });
+}
+
+// 知交云 quota for the saved activation code. Returns null when no code is
+// configured or the gateway is unreachable — the balance chip is a nicety and
+// must never break the reader.
+export async function fetchCloudBalance(): Promise<CloudBalance | null> {
+  try {
+    const response = await fetch("/api/cloud/balance");
+    if (!response.ok) {
+      return null;
+    }
+    return (await response.json()) as CloudBalance;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchConnectionSettings(): Promise<ConnectionSettings> {
@@ -46,6 +61,7 @@ export async function testConnectionSettings(settings: ConnectionSettings): Prom
     },
     body: JSON.stringify({
       provider: settings.activeProvider,
+      cloud: settings.cloud,
       codex: settings.codex,
       deepseek: settings.deepseek,
       sjtu: settings.sjtu,
@@ -81,7 +97,7 @@ export async function updateAppReasoningEffort(reasoningEffort: "low" | "medium"
 
 async function updateAppSettings(
   payload: {
-    provider?: "openai" | "codex" | "deepseek" | "sjtu" | "custom";
+    provider?: ProviderName;
     model?: string;
     reasoningEffort?: "low" | "medium" | "high";
   },

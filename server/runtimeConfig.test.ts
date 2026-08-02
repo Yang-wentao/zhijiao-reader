@@ -23,6 +23,39 @@ describe("runtime connection config", () => {
     expect(settings.custom.baseUrl).toBe("https://api.openai.com/v1");
   });
 
+  it("supports 知交云 as a provider with an activation code", async () => {
+    const { buildDefaultConnectionSettings, mergeConnectionSettings, buildConnectionLabel } =
+      await import("./runtimeConfig");
+
+    const defaults = buildDefaultConnectionSettings({ AI_PROVIDER: "cloud" });
+    expect(defaults.activeProvider).toBe("cloud");
+    expect(defaults.cloud.activationCode).toBe("");
+    expect(defaults.cloud.baseUrl).toBe("https://api.zhijiao-reader.com");
+
+    // A saved activation code survives the merge, and the connection label
+    // never leaks the code itself.
+    const merged = mergeConnectionSettings(defaults, {
+      cloud: { activationCode: "ZJ-AAAA-BBBB-CCCC", baseUrl: "" },
+    });
+    expect(merged.cloud.activationCode).toBe("ZJ-AAAA-BBBB-CCCC");
+    expect(merged.cloud.baseUrl).toBe("https://api.zhijiao-reader.com");
+    const label = buildConnectionLabel(merged);
+    expect(label).toBe("知交云 · 订阅版");
+    expect(label).not.toContain("ZJ-");
+  });
+
+  it("rejects a 知交云 connection test with no activation code", async () => {
+    const { testConnectionSettings } = await import("./runtimeConfig");
+
+    const result = await testConnectionSettings({
+      provider: "cloud",
+      cloud: { activationCode: "  ", baseUrl: "" },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("激活码");
+  });
+
   it("merges a saved config file over env defaults", async () => {
     const { mergeConnectionSettings, buildDefaultConnectionSettings } = await import("./runtimeConfig");
 

@@ -1,3 +1,7 @@
+// "cloud" = 知交云, the hosted subscription gateway (activation code only).
+// The rest are bring-your-own-key providers.
+export type ProviderName = "cloud" | "openai" | "codex" | "deepseek" | "sjtu" | "custom";
+
 export type CardMode = "translate" | "ask";
 export type CardStatus = "idle" | "loading" | "streaming" | "done" | "error";
 
@@ -128,8 +132,8 @@ export type PdfContextSelection = {
 export type AppConfig = {
   hasApiKey: boolean;
   isReady: boolean;
-  provider: "openai" | "codex" | "deepseek" | "sjtu" | "custom";
-  providerOptions: Array<"openai" | "codex" | "deepseek" | "sjtu" | "custom">;
+  provider: ProviderName;
+  providerOptions: ProviderName[];
   canSwitchProviders: boolean;
   model: string;
   modelOptions: string[];
@@ -149,7 +153,12 @@ export type AppConfig = {
 };
 
 export type ConnectionSettings = {
-  activeProvider: "openai" | "codex" | "deepseek" | "sjtu" | "custom";
+  activeProvider: ProviderName;
+  // 知交云：only an activation code — the API key and model live on the server.
+  cloud: {
+    activationCode: string;
+    baseUrl: string;
+  };
   codex: {
     bin: string;
     model: string;
@@ -195,4 +204,13 @@ export type ConnectionSettings = {
 export type ConnectionTestResult = {
   ok: boolean;
   message: string;
+};
+
+// Quota snapshot for the active 知交云 activation code (GET /api/cloud/balance).
+export type CloudBalance = {
+  label: string;
+  quotaTokens: number;
+  usedTokens: number;
+  remainingTokens: number;
+  period: string;
 };

@@ -1,5 +1,5 @@
 export type ReasoningEffort = "low" | "medium" | "high";
-export type ProviderName = "openai" | "codex" | "deepseek" | "sjtu" | "custom";
+export type ProviderName = "cloud" | "openai" | "codex" | "deepseek" | "sjtu" | "custom";
 
 const DEFAULT_CODEX_MODEL = "gpt-5.4-mini";
 const DEFAULT_CODEX_REASONING_EFFORT: ReasoningEffort = "low";
@@ -70,13 +70,23 @@ function parseModelOptions(raw: string | undefined, fallbackModel: string, defau
 
 function getProvider(rawProvider: string | undefined): ProviderName {
   const normalized = rawProvider?.trim();
-  if (normalized === "codex" || normalized === "deepseek" || normalized === "sjtu" || normalized === "custom") {
+  if (
+    normalized === "cloud" ||
+    normalized === "codex" ||
+    normalized === "deepseek" ||
+    normalized === "sjtu" ||
+    normalized === "custom"
+  ) {
     return normalized;
   }
   return "openai";
 }
 
 function getProviderModel(provider: ProviderName) {
+  // 知交云 picks the model server-side; the client never chooses one.
+  if (provider === "cloud") {
+    return "云端模型";
+  }
   if (provider === "codex") {
     return getCodexModel();
   }

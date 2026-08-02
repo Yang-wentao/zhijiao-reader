@@ -8,6 +8,7 @@ import { splitIntoReadableChunks as splitStreamChunks } from "./lib/streaming";
 import {
   appendNote,
   fetchAppConfig,
+  fetchCloudBalance,
   fetchConnectionSettings,
   fetchHighlights,
   saveConnectionSettings,
@@ -19,6 +20,7 @@ import {
 import { cardsReducer, createCard, getCardHistory, validateSelection } from "./state/cards";
 import type {
   AppConfig,
+  CloudBalance,
   ConnectionSettings,
   PassageCard,
   PdfContextSelection,
@@ -29,8 +31,8 @@ import type {
 const DEFAULT_CONFIG: AppConfig = {
   hasApiKey: false,
   isReady: false,
-  provider: "openai",
-  providerOptions: ["codex", "deepseek", "sjtu", "openai", "custom"],
+  provider: "cloud",
+  providerOptions: ["cloud", "deepseek", "sjtu", "openai", "custom", "codex"],
   canSwitchProviders: false,
   model: "gpt-4o",
   modelOptions: ["gpt-4o"],
@@ -71,6 +73,9 @@ export default function App() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isSavingConnection, setIsSavingConnection] = useState(false);
   const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
+  // 知交云 quota shown in the header chip. null when not on the cloud
+  // provider, or when the gateway didn't answer (the chip then just says 订阅版).
+  const [cloudBalance, setCloudBalance] = useState<CloudBalance | null>(null);
   const [tabs, setTabs] = useState<PdfTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [ratio, setRatio] = useState(0.68);
@@ -111,6 +116,16 @@ export default function App() {
         setConfigError(error.message);
       });
   }, []);
+
+  // Pull the cloud quota when 知交云 becomes the active provider (and clear it
+  // when switching away, so a stale number never lingers in the chip).
+  useEffect(() => {
+    if (config.provider !== "cloud") {
+      setCloudBalance(null);
+      return;
+    }
+    void fetchCloudBalance().then(setCloudBalance);
+  }, [config.provider]);
 
   useEffect(() => {
     if (!toast) {
@@ -285,6 +300,15 @@ export default function App() {
     return card;
   }
 
+  // Called after each finished request so the header chip reflects what the
+  // last translation actually cost. No-op unless 知交云 is the active provider.
+  function refreshCloudBalanceIfActive() {
+    if (config.provider !== "cloud") {
+      return;
+    }
+    void fetchCloudBalance().then(setCloudBalance);
+  }
+
   async function runTranslation(card: PassageCard, tabId: string) {
     const dispatchForSourceTab = (action: Parameters<typeof cardsReducer>[1]) =>
       dispatchCardActionForTab(tabId, action);
@@ -300,6 +324,7 @@ export default function App() {
         onDone: () => {
           void queue.then(() => {
             dispatchForSourceTab({ type: "finish_request", cardId: card.id, assistantMessage: result.trim() });
+            refreshCloudBalanceIfActive();
           });
         },
       });
@@ -343,6 +368,7 @@ export default function App() {
         onDone: () => {
           void queue.then(() => {
             dispatchForSourceTab({ type: "finish_request", cardId, assistantMessage: result.trim() });
+            refreshCloudBalanceIfActive();
           });
         },
       });
@@ -888,6 +914,7 @@ export default function App() {
             provider={config.provider}
             connectionLabel={config.connectionLabel}
             model={config.model}
+            cloudBalance={cloudBalance}
             isUpdatingModel={isSavingConnection || isTestingConnection}
             questionActionLabel={config.questionActionLabel}
             translationTrigger={config.translationTrigger}
