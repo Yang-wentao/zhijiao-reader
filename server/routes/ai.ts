@@ -42,12 +42,12 @@ export function createAIRouter(options: RouteOptions) {
     res.json(options.getConnectionSettings());
   });
 
-  // Quota/usage for the saved 知交云 activation code, used by the header chip.
+  // Quota/usage for the saved 知交订阅 activation code, used by the header chip.
   // Returns 400 when no code is configured so the client can stay quiet.
   router.get("/cloud/balance", async (_req, res) => {
     const cloud = options.getConnectionSettings().cloud;
     if (!cloud?.activationCode?.trim()) {
-      res.status(400).json({ error: "还没有填写知交云激活码。" });
+      res.status(400).json({ error: "还没有填写知交订阅激活码。" });
       return;
     }
     try {
@@ -55,7 +55,7 @@ export function createAIRouter(options: RouteOptions) {
       res.json(balance);
     } catch (error) {
       res.status(502).json({
-        error: error instanceof Error ? error.message : "无法获取知交云余额。",
+        error: error instanceof Error ? error.message : "无法获取知交订阅余额。",
       });
     }
   });
@@ -212,7 +212,7 @@ function buildConfigResponse(options: RouteOptions) {
 
 function getProviderErrorMessage(providerName: ProviderName) {
   if (providerName === "cloud") {
-    return "还没有填写知交云激活码，请在设置中填写。";
+    return "还没有填写知交订阅激活码，请在设置中填写。";
   }
   if (providerName === "openai") {
     return "还没有配置 OpenAI API key，请在设置中填写。";

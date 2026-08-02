@@ -1,7 +1,7 @@
 import type { AIProvider, AskInput, TranslationInput } from "./types.js";
 
-// 知交云 provider — unlike every other provider, this one does NOT talk to a
-// model API directly. It forwards to the 知交云 gateway (cloud/ in this repo),
+// 知交订阅 provider — unlike every other provider, this one does NOT talk to a
+// model API directly. It forwards to the 知交订阅 gateway (cloud/ in this repo),
 // which holds the real API key, checks the activation code's quota, and relays
 // the model stream back. So there is no API key, no model choice, and no
 // prompt building on this side: the gateway owns all of that.
@@ -12,7 +12,13 @@ type ProviderOptions = {
   baseUrl?: string;
 };
 
+// Model the gateway is expected to run. Used as the header-chip label until
+// /v1/me reports the deployment's real model (older gateways omit it).
+export const DEFAULT_CLOUD_MODEL = "deepseek-v4-flash";
+
 export type CloudBalance = {
+  // Absent on gateways older than v1.1.1.
+  model?: string;
   label: string;
   quotaTokens: number;
   usedTokens: number;
@@ -94,7 +100,7 @@ async function* readGatewayStream(body: NodeJS.ReadableStream | ReadableStream<U
       if (event === "delta" && typeof parsed.text === "string") {
         yield parsed.text;
       } else if (event === "error") {
-        throw new Error(parsed.error || "知交云返回了错误。");
+        throw new Error(parsed.error || "知交订阅返回了错误。");
       } else if (event === "done") {
         return;
       }
@@ -113,7 +119,7 @@ async function readGatewayError(response: Response): Promise<string> {
   if (response.status === 402) {
     return "本月额度已用完，请联系开发者续费。";
   }
-  return `知交云暂时不可用（HTTP ${response.status}）。`;
+  return `知交订阅暂时不可用（HTTP ${response.status}）。`;
 }
 
 // Fetch quota/usage for an activation code. Used by the Settings "test

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>知交云 · 管理台</title>
+<title>知交订阅 · 管理台</title>
 <style>
   :root { font-family: -apple-system, "PingFang SC", "Segoe UI", sans-serif; color: #1f2329; }
   body { margin: 0; min-height: 100vh; background: linear-gradient(135deg, #f6f2eb 0%, #f4efe7 40%, #e8edf7 100%); }
@@ -43,7 +43,7 @@
 <body>
 <div class="wrap">
   <div id="login" hidden>
-    <h1>知交云 · 管理台</h1>
+    <h1>知交订阅 · 管理台</h1>
     <p class="sub">输入管理密钥（cloud/.env 里的 ADMIN_TOKEN）</p>
     <input id="tokenInput" type="password" placeholder="ADMIN_TOKEN" autocomplete="current-password">
     <div class="err" id="loginErr"></div>
@@ -51,7 +51,7 @@
   </div>
 
   <div id="main" hidden>
-    <h1>知交云 · 管理台</h1>
+    <h1>知交订阅 · 管理台</h1>
     <p class="sub">zhijiao-cloud 运行概览 <button class="mini" onclick="refresh()">刷新</button> <button class="mini" onclick="logout()">退出</button></p>
     <div class="cards" id="cards"></div>
 

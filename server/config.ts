@@ -83,9 +83,9 @@ function getProvider(rawProvider: string | undefined): ProviderName {
 }
 
 function getProviderModel(provider: ProviderName) {
-  // 知交云 picks the model server-side; the client never chooses one.
+  // 知交订阅 picks the model server-side; the client never chooses one.
   if (provider === "cloud") {
-    return "云端模型";
+    return "deepseek-v4-flash";
   }
   if (provider === "codex") {
     return getCodexModel();

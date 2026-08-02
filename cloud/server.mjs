@@ -1,4 +1,4 @@
-// 知交云 API 网关：激活码鉴权 → 额度检查 → DeepSeek 转发（SSE）→ 用量入账。
+// 知交订阅 API 网关：激活码鉴权 → 额度检查 → DeepSeek 转发（SSE）→ 用量入账。
 // The SSE event protocol (status / delta / done / error) matches the desktop
 // app's existing /api/*/stream contract so the client-side parser is reused.
 import express from "express";
@@ -31,7 +31,7 @@ export function createApp({ db, config }) {
     const header = req.headers.authorization ?? "";
     const code = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
     if (!code) {
-      res.status(401).json({ error: "缺少激活码。请在设置中填写知交云激活码。" });
+      res.status(401).json({ error: "缺少激活码。请在设置中填写知交订阅激活码。" });
       return;
     }
     const row = db.authenticate(code);
@@ -46,6 +46,9 @@ export function createApp({ db, config }) {
   app.get("/v1/me", (req, res) => {
     const row = req.codeRow;
     res.json({
+      // The model the gateway actually calls — the client shows this in its
+      // header chip, so it stays truthful if this deployment switches models.
+      model: config.model,
       label: row.label,
       quotaTokens: row.quota_tokens,
       usedTokens: row.used_tokens,

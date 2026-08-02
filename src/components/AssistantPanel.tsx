@@ -7,7 +7,8 @@ type AssistantPanelProps = {
   provider: ProviderName;
   connectionLabel: string;
   model: string;
-  // Present only when the active provider is 知交云 and the gateway answered.
+  // Present only when 知交订阅 is active and the gateway answered. Used purely
+  // to show the gateway's real model name — quota lives in Settings, not here.
   cloudBalance: CloudBalance | null;
   isUpdatingModel: boolean;
   questionActionLabel: string;
@@ -172,14 +173,10 @@ export function AssistantPanel({
             <div
               className="model-chip-row model-chip-row-compact"
               aria-label={`当前连接：${formatProviderLabel(provider)} · ${chipValue(provider, model, cloudBalance)}`}
-              // The full connection label (incl. reasoning effort, or the cloud
-              // quota) lives in the hover tooltip so curious users can still see
-              // it without the chip taking up two lines on a narrow right pane.
-              title={
-                provider === "cloud" && cloudBalance
-                  ? `知交云 · 本月剩余 ${cloudBalance.remainingTokens.toLocaleString("zh-CN")} / ${cloudBalance.quotaTokens.toLocaleString("zh-CN")} tokens`
-                  : connectionLabel
-              }
+              // The full connection label (incl. reasoning effort) lives in the
+              // hover tooltip so curious users can still see it without the
+              // chip taking up two lines on a narrow right pane.
+              title={connectionLabel}
             >
               <span className="model-provider">{formatProviderLabel(provider)}</span>
               <strong className="model-value">{chipValue(provider, model, cloudBalance)}</strong>
@@ -336,7 +333,7 @@ function safeLocalStorage(): Storage | null {
 
 function formatProviderLabel(provider: ProviderName) {
   if (provider === "cloud") {
-    return "知交云";
+    return "知交订阅";
   }
   if (provider === "deepseek") {
     return "DeepSeek";
@@ -353,35 +350,21 @@ function formatProviderLabel(provider: ProviderName) {
   return "OpenAI";
 }
 
-// What the header chip shows next to the provider name. For BYOK providers
-// that's the model; for 知交云 the model is fixed server-side, so the useful
-// number is how much quota is left this month.
+// What the header chip shows next to the provider name: always the model.
+// For 知交订阅 the model is chosen server-side, so we prefer the name the
+// gateway reports and fall back to whatever /api/config says.
 function chipValue(provider: ProviderName, model: string, balance: CloudBalance | null) {
-  if (provider === "cloud") {
-    return balance ? `余 ${formatTokenCount(balance.remainingTokens)}` : "订阅版";
-  }
-  return shortenModelName(provider, model);
-}
-
-// "2998986" → "2.99M"; keeps the chip narrow on a squeezed right pane.
-function formatTokenCount(tokens: number): string {
-  if (tokens >= 1_000_000) {
-    return `${(tokens / 1_000_000).toFixed(2)}M`;
-  }
-  if (tokens >= 1_000) {
-    return `${Math.round(tokens / 1_000)}K`;
-  }
-  return String(tokens);
+  return shortenModelName(provider, (provider === "cloud" && balance?.model) || model);
 }
 
 // Strip a redundant provider-name prefix from the model so the chip stays compact.
-// Example: "deepseek-chat" under the DeepSeek provider → "chat"; "glm-5" stays as-is.
+// Example: "deepseek-v4-flash" → "v4-flash"; "glm-5" stays as-is.
 function shortenModelName(provider: ProviderName, model: string) {
   if (!model) {
     return model;
   }
   const lower = model.toLowerCase();
-  if (provider === "deepseek" && lower.startsWith("deepseek-")) {
+  if ((provider === "deepseek" || provider === "cloud") && lower.startsWith("deepseek-")) {
     return model.slice("deepseek-".length);
   }
   return model;

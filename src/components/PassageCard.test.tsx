@@ -302,6 +302,181 @@ describe("PassageCard", () => {
     expect(rawParagraph).toBeUndefined();
   });
 
+  it("promotes an inline $...\\tag{}...$ span into a display block", () => {
+    // Observed in the wild (deepseek v4-flash, Stein-Encoder paper): the model
+    // put a numbered equation in SINGLE-dollar inline math. \tag is display-only,
+    // so KaTeX threw and painted the source red. Promoting the span to $$..$$
+    // is always safe — the inline form could never have rendered.
+    const card = buildCard({
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content: "一阶矩：$E\\left[ T(Y)\\Sigma^{-1}(Z - AX) \\right] \\tag{5}$",
+        },
+      ],
+    });
+
+    const { container } = render(
+      <PassageCard
+        card={card}
+        questionActionLabel="Ask ZhiJiao"
+        onAsk={() => undefined}
+        onDismiss={() => undefined}
+        onToggle={() => undefined}
+        onRetry={() => undefined}
+        onNotice={() => undefined}
+      />,
+    );
+
+    // Display mode + no error, and the equation number rendered as a real
+    // KaTeX tag rather than falling out as literal text.
+    expect(container.querySelector(".katex-display")).not.toBeNull();
+    expect(container.querySelector(".katex-error")).toBeNull();
+    expect(container.querySelector(".tag")).not.toBeNull();
+  });
+
+  it("turns a \\tag{} that trails an inline formula into a plain (n) number", () => {
+    // Captured from a live deepseek v4-flash translation: the number landed
+    // just outside the inline math, so KaTeX never saw it and the reader got a
+    // literal "\tag{5}". It belongs to the formula it follows, so render it
+    // the way the source PDF does — inline, without breaking the sentence.
+    const card = buildCard({
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content: "一阶：$E[T(Y)\\Sigma^{-1}(Z - AX)]$ \\tag{5}。二阶：$E[T(Y)]$。",
+        },
+      ],
+    });
+
+    const { container } = render(
+      <PassageCard
+        card={card}
+        questionActionLabel="Ask ZhiJiao"
+        onAsk={() => undefined}
+        onDismiss={() => undefined}
+        onToggle={() => undefined}
+        onRetry={() => undefined}
+        onNotice={() => undefined}
+      />,
+    );
+
+    const body = container.querySelector(".message-content")?.textContent ?? "";
+    expect(body).not.toContain("\\tag{5}");
+    expect(body).toContain("(5)");
+    // The sentence stays in one paragraph — no display block splitting it.
+    expect(container.querySelector(".katex-display")).toBeNull();
+    expect(container.querySelector(".katex-error")).toBeNull();
+  });
+
+  it("repairs a prime followed by a superscript (double-superscript error)", () => {
+    // Also from the Stein-Encoder paper: `\hat{Z}'_i^\top` — the prime IS a
+    // superscript, so the following ^\top is a second one and KaTeX rejects
+    // the whole formula. An empty group between them is the canonical fix.
+    const card = buildCard({
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content:
+            "计算 Stein 矩阵 $\\hat{K} = \\hat{\\Omega}^{1/2} \\left[ \\frac{1}{n} \\sum_i T(Y_i)(\\hat{Z}'_i \\hat{Z}'_i^\\top - \\hat{\\Sigma}) \\right] \\hat{\\Omega}^{1/2}$ 。",
+        },
+      ],
+    });
+
+    const { container } = render(
+      <PassageCard
+        card={card}
+        questionActionLabel="Ask ZhiJiao"
+        onAsk={() => undefined}
+        onDismiss={() => undefined}
+        onToggle={() => undefined}
+        onRetry={() => undefined}
+        onNotice={() => undefined}
+      />,
+    );
+
+    expect(container.querySelector(".katex")).not.toBeNull();
+    expect(container.querySelector(".katex-error")).toBeNull();
+    // The TeX that reaches KaTeX (visible in its MathML annotation) carries
+    // the inserted empty group — proof the repair ran, not just that KaTeX
+    // happened to tolerate the input.
+    expect(container.textContent).toContain("{}^\\top");
+  });
+
+  it("renders a real deepseek v4-flash translation that hits several math pitfalls at once", () => {
+    // Verbatim capture from a live translation of the Stein-Encoder paper —
+    // the passage that rendered as red LaTeX in v1.1.0. It contains, in one
+    // paragraph: inline math with \tag inside, a prime immediately followed by
+    // a superscript, and ordinary inline formulas that must stay untouched.
+    const card = buildCard({
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content:
+            "在假设 3.1 下，得分函数变为显式形式：$H_1(Z|X) = -\\Sigma^{-1}(Z-AX)$。将其代入一般定义，可得到闭式残差 Stein 矩张量：一阶：$E[T(Y)\\Sigma^{-1}(Z-AX)] \\tag{5}$；二阶：$E[T(Y)\\{\\Sigma^{-1}(Z-AX)(Z-AX)^T \\Sigma^{-1} - \\Sigma^{-1}\\}]$。计算 Stein 矩阵 $K = \\Omega^{1/2}[(1/n) \\sum_i T(Y_i)(\\hat{Z}_i' \\hat{Z}_i'^T - \\Sigma)] \\Omega^{1/2}$。",
+        },
+      ],
+    });
+
+    const { container } = render(
+      <PassageCard
+        card={card}
+        questionActionLabel="Ask ZhiJiao"
+        onAsk={() => undefined}
+        onDismiss={() => undefined}
+        onToggle={() => undefined}
+        onRetry={() => undefined}
+        onNotice={() => undefined}
+      />,
+    );
+
+    // Nothing may fall back to red source text, and the tagged equation
+    // becomes a numbered display block.
+    expect(container.querySelector(".katex-error")).toBeNull();
+    expect(container.querySelector(".katex-display")).not.toBeNull();
+    expect(container.querySelector(".tag")).not.toBeNull();
+    // The surrounding prose survives intact — the dollar-pairing scan must not
+    // swallow the Chinese text between two separate formulas.
+    const body = container.querySelector(".message-content")?.textContent ?? "";
+    expect(body).toContain("将其代入一般定义");
+    expect(body).toContain("二阶");
+    expect(body).toContain("计算 Stein 矩阵");
+  });
+
+  it("leaves prose and well-formed math untouched", () => {
+    // Guard rail for the two new rewrites: an apostrophe in prose and a
+    // correctly-written transpose must survive unchanged.
+    const card = buildCard({
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content: "The model's output is fine. 转置写法正确时：$ {X'_i}^\\top = Y $ 。",
+        },
+      ],
+    });
+
+    const { container } = render(
+      <PassageCard
+        card={card}
+        questionActionLabel="Ask ZhiJiao"
+        onAsk={() => undefined}
+        onDismiss={() => undefined}
+        onToggle={() => undefined}
+        onRetry={() => undefined}
+        onNotice={() => undefined}
+      />,
+    );
+
+    expect(container.textContent).toContain("The model's output is fine.");
+    expect(container.querySelector(".katex")).not.toBeNull();
+    expect(container.querySelector(".katex-error")).toBeNull();
+  });
+
   it("wraps a multi-line tagged equation emitted as raw LaTeX (matrix-style)", () => {
     // Multi-line variant: the equation body spans several physical lines
     // inside a single paragraph. A per-line wrap would only catch the last

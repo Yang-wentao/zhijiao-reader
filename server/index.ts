@@ -7,7 +7,7 @@ import { createServer, type Server } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type ReasoningEffort } from "./config.js";
-import { CloudProvider } from "./providers/cloudProvider.js";
+import { CloudProvider, DEFAULT_CLOUD_MODEL } from "./providers/cloudProvider.js";
 import { CodexProvider } from "./providers/codexProvider.js";
 import { CustomProvider } from "./providers/customProvider.js";
 import { DeepSeekProvider } from "./providers/deepseekProvider.js";
@@ -227,17 +227,17 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
     settings.custom.apiKey.length > 0 && settings.custom.baseUrl.length > 0 && settings.custom.model.length > 0;
 
   return {
-    // 知交云：the gateway picks the model, so there is nothing to switch here.
+    // 知交订阅：the gateway picks the model, so there is nothing to switch here.
     cloud: {
       provider: cloudReady
         ? new CloudProvider({
             activationCode: settings.cloud.activationCode,
             baseUrl: settings.cloud.baseUrl,
           })
-        : createUnavailableProvider("还没有填写知交云激活码，请在设置中填写。"),
+        : createUnavailableProvider("还没有填写知交订阅激活码，请在设置中填写。"),
       isReady: cloudReady,
-      model: "云端模型",
-      modelOptions: ["云端模型"],
+      model: DEFAULT_CLOUD_MODEL,
+      modelOptions: [DEFAULT_CLOUD_MODEL],
       canSwitchModels: false,
       reasoningEffort: null,
       reasoningEffortOptions: [],

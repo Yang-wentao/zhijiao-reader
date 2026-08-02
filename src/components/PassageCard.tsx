@@ -265,11 +265,13 @@ function renderRichContent(content: string) {
 }
 
 function normalizeMathMarkdown(content: string) {
-  const normalized = content
-    .replace(/\\\\\[((?:.|\n)+?)\\\\\]/g, (_, math) => `$$${math.trim()}$$`)
-    .replace(/\\\\\(((?:.|\n)+?)\\\\\)/g, (_, math) => `$${math.trim()}$`)
-    .replace(/\\\[((?:.|\n)+?)\\\]/g, (_, math) => `$$${math.trim()}$$`)
-    .replace(/\\\(((?:.|\n)+?)\\\)/g, (_, math) => `$${math.trim()}$`);
+  const normalized = promoteInlineTagToDisplay(
+    content
+      .replace(/\\\\\[((?:.|\n)+?)\\\\\]/g, (_, math) => `$$${math.trim()}$$`)
+      .replace(/\\\\\(((?:.|\n)+?)\\\\\)/g, (_, math) => `$${math.trim()}$`)
+      .replace(/\\\[((?:.|\n)+?)\\\]/g, (_, math) => `$$${math.trim()}$$`)
+      .replace(/\\\(((?:.|\n)+?)\\\)/g, (_, math) => `$${math.trim()}$`),
+  );
 
   // Paragraph-level safety net for weaker models (gpt-5.4-mini, deepseek
   // v4-flash, ...) that emit a whole tagged equation as raw LaTeX with NO
@@ -277,11 +279,65 @@ function normalizeMathMarkdown(content: string) {
   // \tag{2.4}`. Wrap the whole paragraph in $$..$$ so KaTeX picks it up.
   // The threshold check inside wrapBareMathParagraph keeps prose paragraphs
   // that merely mention \tag from being mistakenly promoted into math mode.
-  const wrapped = wrapBareMathParagraph(normalized);
+  const wrapped = wrapBareMathParagraph(inlineTagToParenNumber(normalized));
 
-  return wrapped.replace(
-    SINGLE_LINE_DISPLAY_MATH_REGEX,
-    (_, body) => `\n\n$$\n${body.trim()}\n$$\n\n`,
+  return fixDoubleSuperscripts(
+    wrapped.replace(SINGLE_LINE_DISPLAY_MATH_REGEX, (_, body) => `\n\n$$\n${body.trim()}\n$$\n\n`),
+  );
+}
+
+// `\tag{}` is only legal in DISPLAY math. When a model puts a numbered
+// equation in single-dollar INLINE math — `$ E[\dots] \tag{5} $` — KaTeX
+// throws "\tag works only in display mode" and paints the raw LaTeX red.
+// Promoting such spans to their own $$ block is always safe: the inline form
+// could never have rendered.
+//
+// The scan walks inline spans LEFT TO RIGHT so each `$` pairs with the next
+// one, exactly like the Markdown parser does. Matching the tag directly with
+// one regex is not safe: in `一阶：$A$ \tag{5}。二阶：$B$` it would pair the
+// CLOSING dollar of A with the OPENING dollar of B and swallow the prose in
+// between.
+const INLINE_MATH_SPAN_REGEX = /\$[^\n$]+\$/g;
+
+function promoteInlineTagToDisplay(content: string) {
+  return content.replace(INLINE_MATH_SPAN_REGEX, (span, offset: number) => {
+    // Skip spans that are really the inside of a `$$...$$` block — those are
+    // display math already and are handled further down the pipeline.
+    if (content[offset - 1] === "$" || content[offset + span.length] === "$") {
+      return span;
+    }
+    if (!span.includes("\\tag{")) {
+      return span;
+    }
+    return `\n\n$$\n${span.slice(1, -1).trim()}\n$$\n\n`;
+  });
+}
+
+// Third \tag failure mode seen live: the model puts the number just OUTSIDE
+// an inline formula — `一阶：$E[\dots]$ \tag{5}。` — where KaTeX never sees it
+// and the reader gets a literal "\tag{5}". Since the tag clearly belongs to
+// the formula it follows, render it the way the source PDF does: "(5)".
+// Promoting to a display block instead would tear the sentence in half, and a
+// tag with no adjacent math (see the orphan-tag test) is deliberately left
+// alone — there is nothing it could belong to.
+const TAG_AFTER_INLINE_MATH_REGEX = /(\$[^\n$]+\$)[ \t]*\\tag\{([^}]*)\}/g;
+
+function inlineTagToParenNumber(content: string) {
+  return content.replace(TAG_AFTER_INLINE_MATH_REGEX, (_, math: string, label: string) => `${math} (${label})`);
+}
+
+// A prime IS a superscript, so `\hat{Z}'_i^\top` is a double superscript —
+// KaTeX (and real LaTeX) reject it, and the whole formula renders as red
+// source. The canonical fix is an empty group before the second superscript:
+// `\hat{Z}'_i{}^\top`. Applied ONLY inside math spans so prose is untouched,
+// and only to prime-then-superscript sequences, which are always an error
+// otherwise.
+const MATH_SPAN_REGEX = /\$\$[\s\S]*?\$\$|\$[^\n$]+?\$/g;
+const PRIME_DOUBLE_SUPERSCRIPT_REGEX = /'(\s*(?:_\{[^}]*\}|_\\?[A-Za-z0-9]+)?)\s*\^/g;
+
+function fixDoubleSuperscripts(content: string) {
+  return content.replace(MATH_SPAN_REGEX, (span) =>
+    span.replace(PRIME_DOUBLE_SUPERSCRIPT_REGEX, (_, subscript: string) => `'${subscript}{}^`),
   );
 }
 

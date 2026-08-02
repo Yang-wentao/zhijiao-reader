@@ -23,7 +23,7 @@ describe("runtime connection config", () => {
     expect(settings.custom.baseUrl).toBe("https://api.openai.com/v1");
   });
 
-  it("supports 知交云 as a provider with an activation code", async () => {
+  it("supports 知交订阅 as a provider with an activation code", async () => {
     const { buildDefaultConnectionSettings, mergeConnectionSettings, buildConnectionLabel } =
       await import("./runtimeConfig");
 
@@ -40,11 +40,11 @@ describe("runtime connection config", () => {
     expect(merged.cloud.activationCode).toBe("ZJ-AAAA-BBBB-CCCC");
     expect(merged.cloud.baseUrl).toBe("https://api.zhijiao-reader.com");
     const label = buildConnectionLabel(merged);
-    expect(label).toBe("知交云 · 订阅版");
+    expect(label).toBe("知交订阅 · deepseek-v4-flash");
     expect(label).not.toContain("ZJ-");
   });
 
-  it("rejects a 知交云 connection test with no activation code", async () => {
+  it("rejects a 知交订阅 connection test with no activation code", async () => {
     const { testConnectionSettings } = await import("./runtimeConfig");
 
     const result = await testConnectionSettings({

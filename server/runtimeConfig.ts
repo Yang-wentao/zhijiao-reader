@@ -12,7 +12,7 @@ export type ProviderName = "cloud" | "openai" | "codex" | "deepseek" | "sjtu" | 
 export type ConnectionSettings = {
   activeProvider: ProviderName;
   /**
-   * 知交云 — the hosted gateway. Only an activation code is needed; the API
+   * 知交订阅 — the hosted gateway. Only an activation code is needed; the API
    * key and model live on the server side, so there is nothing else to
    * configure (and nothing secret stored on the user's machine).
    */
@@ -279,7 +279,7 @@ export async function testConnectionSettings(input: ConnectionTestInput): Promis
         message: `连接成功：${owner}本月剩余 ${formatTokenCount(balance.remainingTokens)} tokens（共 ${formatTokenCount(balance.quotaTokens)}）`,
       };
     } catch (error) {
-      return { ok: false, message: error instanceof Error ? error.message : "无法连接知交云。" };
+      return { ok: false, message: error instanceof Error ? error.message : "无法连接知交订阅。" };
     }
   }
 
@@ -347,7 +347,7 @@ export function testCodexBinary(binary: string, runner: CodexRunner = spawnSync 
 
 export function buildConnectionLabel(settings: ConnectionSettings) {
   if (settings.activeProvider === "cloud") {
-    return "知交云 · 订阅版";
+    return "知交订阅 · deepseek-v4-flash";
   }
   if (settings.activeProvider === "codex") {
     return `Local Codex · ${settings.codex.model} · ${settings.codex.reasoningEffort}`;

@@ -30,7 +30,7 @@ export async function updateAppProvider(provider: ProviderName): Promise<AppConf
   return updateAppSettings({ provider });
 }
 
-// 知交云 quota for the saved activation code. Returns null when no code is
+// 知交订阅 quota for the saved activation code. Returns null when no code is
 // configured or the gateway is unreachable — the balance chip is a nicety and
 // must never break the reader.
 export async function fetchCloudBalance(): Promise<CloudBalance | null> {

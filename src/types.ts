@@ -1,4 +1,4 @@
-// "cloud" = 知交云, the hosted subscription gateway (activation code only).
+// "cloud" = 知交订阅, the hosted subscription gateway (activation code only).
 // The rest are bring-your-own-key providers.
 export type ProviderName = "cloud" | "openai" | "codex" | "deepseek" | "sjtu" | "custom";
 
@@ -154,7 +154,7 @@ export type AppConfig = {
 
 export type ConnectionSettings = {
   activeProvider: ProviderName;
-  // 知交云：only an activation code — the API key and model live on the server.
+  // 知交订阅：only an activation code — the API key and model live on the server.
   cloud: {
     activationCode: string;
     baseUrl: string;
@@ -206,8 +206,10 @@ export type ConnectionTestResult = {
   message: string;
 };
 
-// Quota snapshot for the active 知交云 activation code (GET /api/cloud/balance).
+// Gateway info for the active 知交订阅 activation code (GET /api/cloud/balance).
 export type CloudBalance = {
+  // The model the gateway actually runs. Absent on gateways older than v1.1.1.
+  model?: string;
   label: string;
   quotaTokens: number;
   usedTokens: number;

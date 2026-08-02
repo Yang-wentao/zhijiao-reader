@@ -1,4 +1,4 @@
-# 知交云（zhijiao-cloud）
+# 知交订阅（zhijiao-cloud）
 
 给「知交文献阅读」订阅用户使用的 API 网关：**激活码鉴权 → 每月额度检查 → 转发 DeepSeek → 用量入账**。跑在自己的机器上（当前：Mac mini + Cloudflare Tunnel），API key 只存在服务器端，客户端里没有任何秘密。
 

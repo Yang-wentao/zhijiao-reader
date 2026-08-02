@@ -15,6 +15,12 @@ Numbers like (8), (2.3a), (S.1) MUST be moved INSIDE the display block via \\tag
   Wrong:  $$ X = Y + Z (8) $$
 
 CRITICAL — \\tag{} ONLY works inside $$...$$. Writing \\tag{3} without surrounding $$ makes the entire line render as raw text. Every \\tag MUST be paired with both an opening $$ AND a closing $$ on the same line or paragraph. Before sending output, scan it once: if \\tag{ appears anywhere, verify the $$...$$ wrap is present.
+Single-dollar INLINE math must NEVER contain \\tag: "$ E[...] \\tag{5} $" is an error. A numbered equation always gets its own $$ ... $$ display block on its own line.
+
+OUTPUT RULES — primes and transposes:
+A prime ' already IS a superscript, so a second superscript right after it is an error (\\hat{Z}'_i^\\top fails to render). Wrap the primed symbol in braces:
+  Right:  {\\hat{Z}'_i}^\\top   and   {X'}^2
+  Wrong:  \\hat{Z}'_i^\\top     and   X'^2
 
 OUTPUT RULES — preserve math structure:
 Keep every subscript, superscript, integral, sum, fraction, absolute value, inequality and norm exactly as in the source. Do not paraphrase formulas into Chinese prose.

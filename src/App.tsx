@@ -73,8 +73,9 @@ export default function App() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isSavingConnection, setIsSavingConnection] = useState(false);
   const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
-  // 知交云 quota shown in the header chip. null when not on the cloud
-  // provider, or when the gateway didn't answer (the chip then just says 订阅版).
+  // Gateway info for 知交订阅 — fetched once when the provider becomes active
+  // so the header chip can name the model the gateway actually runs. Quota is
+  // deliberately NOT surfaced here; it lives in Settings → 测试连接.
   const [cloudBalance, setCloudBalance] = useState<CloudBalance | null>(null);
   const [tabs, setTabs] = useState<PdfTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -117,8 +118,8 @@ export default function App() {
       });
   }, []);
 
-  // Pull the cloud quota when 知交云 becomes the active provider (and clear it
-  // when switching away, so a stale number never lingers in the chip).
+  // Ask the gateway which model it runs when 知交订阅 becomes active (and clear
+  // it when switching away, so a stale name never lingers in the chip).
   useEffect(() => {
     if (config.provider !== "cloud") {
       setCloudBalance(null);
@@ -300,15 +301,6 @@ export default function App() {
     return card;
   }
 
-  // Called after each finished request so the header chip reflects what the
-  // last translation actually cost. No-op unless 知交云 is the active provider.
-  function refreshCloudBalanceIfActive() {
-    if (config.provider !== "cloud") {
-      return;
-    }
-    void fetchCloudBalance().then(setCloudBalance);
-  }
-
   async function runTranslation(card: PassageCard, tabId: string) {
     const dispatchForSourceTab = (action: Parameters<typeof cardsReducer>[1]) =>
       dispatchCardActionForTab(tabId, action);
@@ -324,7 +316,6 @@ export default function App() {
         onDone: () => {
           void queue.then(() => {
             dispatchForSourceTab({ type: "finish_request", cardId: card.id, assistantMessage: result.trim() });
-            refreshCloudBalanceIfActive();
           });
         },
       });
@@ -368,7 +359,6 @@ export default function App() {
         onDone: () => {
           void queue.then(() => {
             dispatchForSourceTab({ type: "finish_request", cardId, assistantMessage: result.trim() });
-            refreshCloudBalanceIfActive();
           });
         },
       });
