@@ -21,3 +21,6 @@ cloud/data/
 .claude/
 无关文件备用/
 测试截图/
+
+# Root-level scratch screenshots
+ZJ Image*.png
