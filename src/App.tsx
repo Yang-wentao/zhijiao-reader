@@ -4,6 +4,7 @@ import { ConnectionSettingsModal } from "./components/ConnectionSettingsModal";
 import { HighlightContextMenu, PdfContextMenu } from "./components/PdfContextMenu";
 import { PdfPane } from "./components/PdfPane";
 import { SplitLayout } from "./components/SplitLayout";
+import { IS_WEB_BUILD } from "./lib/appMode";
 import { splitIntoReadableChunks as splitStreamChunks } from "./lib/streaming";
 import {
   appendNote,
@@ -120,13 +121,15 @@ export default function App() {
 
   // Ask the gateway which model it runs when 知交订阅 becomes active (and clear
   // it when switching away, so a stale name never lingers in the chip).
+  // connectionLabel is a dependency so saving new settings — e.g. pasting an
+  // activation code into the web build — refreshes the chip too.
   useEffect(() => {
     if (config.provider !== "cloud") {
       setCloudBalance(null);
       return;
     }
     void fetchCloudBalance().then(setCloudBalance);
-  }, [config.provider]);
+  }, [config.provider, config.connectionLabel]);
 
   useEffect(() => {
     if (!toast) {
@@ -705,7 +708,11 @@ export default function App() {
       return;
     }
     if (!tab.filePath) {
-      setToast("无法获取 PDF 文件路径，无法保存高亮（请确认在桌面端打开）");
+      setToast(
+        IS_WEB_BUILD
+          ? "网页版的划线仅本次会话有效，暂不支持写回 PDF 文件；需要保存请使用桌面版"
+          : "无法获取 PDF 文件路径，无法保存高亮（请确认在桌面端打开）",
+      );
       return;
     }
     if (!tab.highlightsDirty) {

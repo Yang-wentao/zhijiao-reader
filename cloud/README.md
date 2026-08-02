@@ -73,12 +73,13 @@ sudo launchctl bootout system/com.zhijiao.cloud
 sudo rm /Library/LaunchDaemons/com.zhijiao.{tunnel,cloud}.plist
 ```
 
-## 落地页（site/）
+## 落地页与网页版（site/）
 
-仓库根目录的 `site/` 是产品介绍与下载页（纯静态，无构建）。网关会把它挂在根路径上，所以 `zhijiao-reader.com` 和 `api.zhijiao-reader.com` 由同一个进程提供服务：
+仓库根目录的 `site/` 是产品介绍与下载页（纯静态，无构建），`site/app/` 是网页版（React 应用的浏览器构建，产物已提交进仓库）。网关把整个 `site/` 挂在根路径上，所以 `zhijiao-reader.com` 和 `api.zhijiao-reader.com` 由同一个进程提供服务：
 
 - `/` → `site/index.html`（介绍 + 下载）
+- `/app/` → `site/app/`（网页版，直连同源 `/v1/*`，无需 CORS）
 - `/v1/*` → 订阅 API
 - `/admin` → 管理台
 
-首次部署需要在 mini 上给隧道加一条根域名规则，见仓库根 `docs/landing-page.md`。
+首次部署需要在 mini 上给隧道加一条根域名规则，见仓库根 `docs/landing-page.md`（网页版的构建与更新流程也在那里）。

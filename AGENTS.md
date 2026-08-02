@@ -193,6 +193,24 @@ electron-builder --config electron-builder.json --publish never
 
 `--publish never` 很重要。不要随便删掉，否则 Git tag 环境下 `electron-builder` 可能再次触发隐式发布并导致 GitHub Actions 失败。
 
+### 4.4 网页版（web 构建）
+
+同一套前端还有一个浏览器专用构建，部署在 `zhijiao-reader.com/app/`：
+
+```bash
+npm run dev:web     # 本地调试：Vite 把 /v1 代理到生产网关，打开 localhost:5173/app/
+npm run build:web   # 产出 site/app/（base=/app/，emptyOutDir 会先清空该目录）
+```
+
+关键事实：
+
+- 开关是 `src/lib/appMode.ts` 的 `IS_WEB_BUILD`（`import.meta.env.MODE === "web"`）。所有分支都从这里走，不要另造判定。
+- web 模式下没有本地 Express：`src/lib/api.ts` 每个函数开头分支到 `src/lib/webApi.ts`——设置存 localStorage（key `zhijiao-web-settings`），翻译/追问/额度直连**同源** `/v1/*`（`Authorization: Bearer 激活码`）。同源是关键：网关同一进程伺服 `/app/` 和 `/v1`，因此**不需要 CORS**，不要给 `cloud/server.mjs` 加 CORS 头。
+- 只支持知交订阅。BYOK 需要把 prompt 搬进前端（第四份拷贝）+ 任意域 CORS，明确不做。
+- 降级：划线批注仅会话内有效（不写回 PDF）、无 Obsidian 笔记（`notesReady` 恒 false）、设置弹窗隐藏 BYOK/Obsidian/服务地址（`ConnectionSettingsModal.tsx` 里的 `IS_WEB_BUILD` 分支）。
+- **`site/app/` 的构建产物是提交进仓库的**（mini 零构建，git pull 即部署）。改前端后若要更新网页版：`npm run build:web` + 提交 `site/app/` + mini 上 `bash deploy/update.sh`。
+- 测试：`src/lib/webApi.test.ts`（web 实现）与 `src/lib/api.web.test.ts`（mock `IS_WEB_BUILD=true` 验证分支走向）。
+
 ---
 
 ## 5. 前端心智模型

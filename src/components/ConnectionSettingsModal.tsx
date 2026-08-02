@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { IS_WEB_BUILD } from "../lib/appMode";
 import type { ConnectionSettings } from "../types";
 
 type ConnectionSettingsModalProps = {
@@ -116,22 +117,34 @@ export function ConnectionSettingsModal({
               知交订阅已内置模型（DeepSeek v4-flash）与 API 额度，填入激活码即可使用，无需自己申请 API key。
               点下方「测试连接」可查看本月剩余额度。
             </p>
-            <details className="settings-advanced">
-              <summary>高级：服务地址</summary>
-              <input
-                aria-label="Cloud base URL"
-                value={settings.cloud.baseUrl}
-                onChange={(event) =>
-                  onChange({
-                    ...settings,
-                    cloud: {
-                      ...settings.cloud,
-                      baseUrl: event.target.value,
-                    },
-                  })
-                }
-              />
-            </details>
+            {IS_WEB_BUILD ? (
+              <p className="settings-section-hint">
+                想把划线写回 PDF、使用 Obsidian 笔记或自带 API key？
+                <a href="/#download" target="_blank" rel="noreferrer">
+                  下载桌面版
+                </a>
+                。
+              </p>
+            ) : (
+              // The web build always talks to its own origin, so the base URL
+              // knob only exists on the desktop (for self-hosters).
+              <details className="settings-advanced">
+                <summary>高级：服务地址</summary>
+                <input
+                  aria-label="Cloud base URL"
+                  value={settings.cloud.baseUrl}
+                  onChange={(event) =>
+                    onChange({
+                      ...settings,
+                      cloud: {
+                        ...settings.cloud,
+                        baseUrl: event.target.value,
+                      },
+                    })
+                  }
+                />
+              </details>
+            )}
           </div>
         </>
       );
@@ -437,29 +450,38 @@ export function ConnectionSettingsModal({
         </header>
 
         <div className="settings-grid">
-          <label className="settings-field settings-field-wide">
-            <span>服务提供方</span>
-            <select
-              aria-label="Connection provider"
-              value={settings.activeProvider}
-              onChange={(event) =>
-                onChange({
-                  ...settings,
-                  activeProvider: event.target.value as ConnectionSettings["activeProvider"],
-                })
-              }
-            >
-              {PROVIDER_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+          {IS_WEB_BUILD ? (
+            // The web build is 知交订阅-only (BYOK would need prompts and CORS
+            // in the browser), so the provider picker disappears entirely.
+            <div className="settings-field settings-field-wide">
+              <span>服务提供方</span>
+              <p className="settings-section-hint">知交订阅（网页版内置，无需选择）</p>
+            </div>
+          ) : (
+            <label className="settings-field settings-field-wide">
+              <span>服务提供方</span>
+              <select
+                aria-label="Connection provider"
+                value={settings.activeProvider}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    activeProvider: event.target.value as ConnectionSettings["activeProvider"],
+                  })
+                }
+              >
+                {PROVIDER_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          )}
           {currentSection}
         </div>
 
@@ -495,7 +517,9 @@ export function ConnectionSettingsModal({
           <div className="settings-section-header">
             <p className="panel-kicker">PDF 批注</p>
             <p className="settings-section-hint">
-              在 PDF 里高亮、写评论时使用的作者名，会显示在评论卡片上并写入 PDF 文件（WPS / Adobe 可见）。默认使用电脑用户名。
+              {IS_WEB_BUILD
+                ? "在 PDF 里高亮、写评论时使用的作者名，会显示在评论卡片上。注意：网页版的划线与评论仅本次会话有效（刷新后消失），不会写入 PDF 文件；需要长期保存请使用桌面版。"
+                : "在 PDF 里高亮、写评论时使用的作者名，会显示在评论卡片上并写入 PDF 文件（WPS / Adobe 可见）。默认使用电脑用户名。"}
             </p>
           </div>
           <label className="settings-field settings-field-wide">
@@ -517,6 +541,7 @@ export function ConnectionSettingsModal({
           </label>
         </div>
 
+        {IS_WEB_BUILD ? null : (
         <div className="settings-grid settings-notes-grid">
           <div className="settings-section-header">
             <div className="settings-section-title-row">
@@ -600,11 +625,14 @@ export function ConnectionSettingsModal({
             </>
           ) : null}
         </div>
+        )}
 
         <p className="settings-key-hint">
-          {activeProvider === "cloud"
-            ? "激活码仅保存在本机的用户配置目录。使用知交订阅时，选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在本地。"
-            : "API key 与 Obsidian vault 路径仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。"}
+          {IS_WEB_BUILD
+            ? "激活码仅保存在当前浏览器（localStorage），不会发给除知交订阅服务器以外的任何一方。使用时选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在你的设备上，不会上传。"
+            : activeProvider === "cloud"
+              ? "激活码仅保存在本机的用户配置目录。使用知交订阅时，选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在本地。"
+              : "API key 与 Obsidian vault 路径仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。"}
         </p>
 
         <footer className="settings-modal-footer">

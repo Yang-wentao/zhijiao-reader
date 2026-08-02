@@ -91,6 +91,10 @@ Mac 端的同学是否正在为「知云文献翻译」不再更新而苦恼，�
 
 本项目对上海交通大学的 API 做了专门适配，内置 `SJTU API` 连接选项。如果你是交大同学并已申请到「致远一号」测试 API，直接选它即可，配置路径最短；实测 **deepseek-chat**（官方或交大版）是最适合翻译的模型。
 
+## 网页版（免安装体验）
+
+有知交订阅激活码的话，打开 <https://zhijiao-reader.com/app/> 就能在浏览器里直接用：填入激活码、拖入 PDF、选中即翻译，PDF 依旧只在你的设备上。网页版的划线批注仅当次会话有效、不写回 PDF 文件，也不支持 Obsidian 笔记与自带 API key——需要这些请用下面的桌面版。
+
 ## 下载与安装（macOS 桌面版）
 
 > 推荐方式。从 [GitHub Releases](https://github.com/Yang-wentao/zhijiao-reader/releases) 下载对应的 DMG。

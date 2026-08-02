@@ -4,6 +4,7 @@
 
 ```
 zhijiao-reader.com/          → site/index.html（介绍 + 下载）
+zhijiao-reader.com/app/      → site/app/（网页版，见下）
 api.zhijiao-reader.com/v1/*  → 订阅 API
 api.zhijiao-reader.com/admin → 管理台
 ```
@@ -59,6 +60,21 @@ cd ~/zhijiao-reader/cloud && bash deploy/update.sh
 ```
 
 静态文件由 Express 直接读盘，重启网关即生效，无需构建。
+
+## 网页版（site/app/）
+
+`site/app/` 是**同一个 React 应用的浏览器构建**（`npm run build:web`，构建产物直接提交进仓库，mini 上零构建）。它直连同源的 `/v1/*`，所以不需要 CORS；只支持知交订阅（激活码存浏览器 localStorage），划线批注仅会话内有效、不写回 PDF，Obsidian 笔记不可用。
+
+改动前端后要更新网页版：
+
+```bash
+npm run build:web        # 重新生成 site/app/
+git add site/app && git commit && git push
+# 然后 mini 上照常 bash deploy/update.sh
+```
+
+本地调试：`npm run dev:web`（Vite 把 /v1 代理到生产网关），打开 http://localhost:5173/app/ 。
+注意 `vite.config.ts` 里 web 模式的 base 是 `/app/`、outDir 是 `site/app`——`emptyOutDir` 会先清空该目录，不要往里面手放文件。
 
 ## 发新版本后要改的地方
 

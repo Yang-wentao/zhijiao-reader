@@ -1,4 +1,13 @@
+import { IS_WEB_BUILD } from "./appMode";
 import { readSseStream } from "./sse";
+import {
+  webAuthHeaders,
+  webFetchAppConfig,
+  webFetchCloudBalance,
+  webFetchConnectionSettings,
+  webSaveConnectionSettings,
+  webTestConnectionSettings,
+} from "./webApi";
 import type {
   AppConfig,
   CloudBalance,
@@ -9,12 +18,21 @@ import type {
   ProviderName,
 } from "../types";
 
+// In the web build（网页版）there is no local Express server: settings come
+// from localStorage and AI calls hit the 知交订阅 gateway's /v1/* on the same
+// origin. Each function below branches once on IS_WEB_BUILD and otherwise
+// keeps the desktop /api/* behavior — the rest of the app never needs to
+// know which build it's in.
+
 type StreamHandlers = {
   onDelta: (chunk: string) => void;
   onDone: () => void;
 };
 
 export async function fetchAppConfig(): Promise<AppConfig> {
+  if (IS_WEB_BUILD) {
+    return webFetchAppConfig();
+  }
   const response = await fetch("/api/config");
   if (!response.ok) {
     throw new Error("Failed to load app configuration.");
@@ -34,6 +52,9 @@ export async function updateAppProvider(provider: ProviderName): Promise<AppConf
 // configured or the gateway is unreachable — the balance chip is a nicety and
 // must never break the reader.
 export async function fetchCloudBalance(): Promise<CloudBalance | null> {
+  if (IS_WEB_BUILD) {
+    return webFetchCloudBalance();
+  }
   try {
     const response = await fetch("/api/cloud/balance");
     if (!response.ok) {
@@ -46,6 +67,9 @@ export async function fetchCloudBalance(): Promise<CloudBalance | null> {
 }
 
 export async function fetchConnectionSettings(): Promise<ConnectionSettings> {
+  if (IS_WEB_BUILD) {
+    return webFetchConnectionSettings();
+  }
   const response = await fetch("/api/connection");
   if (!response.ok) {
     throw new Error("Failed to load connection settings.");
@@ -54,6 +78,9 @@ export async function fetchConnectionSettings(): Promise<ConnectionSettings> {
 }
 
 export async function testConnectionSettings(settings: ConnectionSettings): Promise<ConnectionTestResult> {
+  if (IS_WEB_BUILD) {
+    return webTestConnectionSettings(settings);
+  }
   const response = await fetch("/api/connection/test", {
     method: "POST",
     headers: {
@@ -77,6 +104,9 @@ export async function testConnectionSettings(settings: ConnectionSettings): Prom
 }
 
 export async function saveConnectionSettings(settings: ConnectionSettings): Promise<AppConfig> {
+  if (IS_WEB_BUILD) {
+    return webSaveConnectionSettings(settings);
+  }
   const response = await fetch("/api/connection", {
     method: "POST",
     headers: {
@@ -125,6 +155,11 @@ export type AppendNotePayload = {
 };
 
 export async function appendNote(payload: AppendNotePayload): Promise<{ filePath: string; created: boolean }> {
+  if (IS_WEB_BUILD) {
+    // No UI reaches this on the web (notesReady is always false), but keep a
+    // clear failure in case that ever changes.
+    throw new Error("网页版不支持 Obsidian 笔记，请使用桌面版。");
+  }
   const response = await fetch("/api/notes/append", {
     method: "POST",
     headers: {
@@ -147,6 +182,11 @@ export async function appendNote(payload: AppendNotePayload): Promise<{ filePath
 // by WPS / Adobe / Preview). Returns [] for any failure — highlights are a
 // best-effort enhancement and must never block opening a PDF.
 export async function fetchHighlights(filePath: string): Promise<PdfHighlight[]> {
+  if (IS_WEB_BUILD) {
+    // Unreachable in practice (filePath is always null in a browser), kept as
+    // a guard so a future regression degrades gracefully.
+    return [];
+  }
   try {
     const response = await fetch(`/api/annotations?path=${encodeURIComponent(filePath)}`);
     if (!response.ok) {
@@ -167,6 +207,9 @@ export async function syncHighlights(
   filePath: string,
   highlights: PdfHighlight[],
 ): Promise<void> {
+  if (IS_WEB_BUILD) {
+    throw new Error("网页版暂不支持把划线写回 PDF 文件，请使用桌面版。");
+  }
   const response = await fetch("/api/annotations/sync", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -193,10 +236,16 @@ export async function streamTranslation(
   card: PassageCard,
   handlers: StreamHandlers,
 ) {
-  return streamRequest("/api/translate/stream", {
+  const payload = {
     selectionText: card.selectionText,
     pageNumber: card.pageNumber,
-  }, handlers);
+  };
+  // The gateway speaks the same SSE protocol and payload shape as the local
+  // server, so the web build only swaps the endpoint and adds the code.
+  if (IS_WEB_BUILD) {
+    return streamRequest("/v1/translate/stream", payload, handlers, webAuthHeaders());
+  }
+  return streamRequest("/api/translate/stream", payload, handlers);
 }
 
 export async function streamAsk(
@@ -205,19 +254,24 @@ export async function streamAsk(
   history: Array<{ role: "user" | "assistant"; content: string }>,
   handlers: StreamHandlers,
 ) {
-  return streamRequest(
-    "/api/ask/stream",
-    {
-      selectionText: card.selectionText,
-      pageNumber: card.pageNumber,
-      question,
-      history,
-    },
-    handlers,
-  );
+  const payload = {
+    selectionText: card.selectionText,
+    pageNumber: card.pageNumber,
+    question,
+    history,
+  };
+  if (IS_WEB_BUILD) {
+    return streamRequest("/v1/ask/stream", payload, handlers, webAuthHeaders());
+  }
+  return streamRequest("/api/ask/stream", payload, handlers);
 }
 
-async function streamRequest(endpoint: string, payload: unknown, handlers: StreamHandlers) {
+async function streamRequest(
+  endpoint: string,
+  payload: unknown,
+  handlers: StreamHandlers,
+  extraHeaders: Record<string, string> = {},
+) {
   const controller = new AbortController();
   let timeoutId: number | null = null;
   let timedOut = false;
@@ -237,6 +291,7 @@ async function streamRequest(endpoint: string, payload: unknown, handlers: Strea
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...extraHeaders,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

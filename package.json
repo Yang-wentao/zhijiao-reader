@@ -13,10 +13,12 @@
     "release:zip": "node scripts/create-release.mjs",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "vite",
+    "dev:web": "vite --mode web",
     "dev:server": "tsx watch server/index.ts",
     "build:server": "tsc -p tsconfig.server.json",
     "launch": "node scripts/launch.mjs",
     "build": "tsc -b && vite build",
+    "build:web": "tsc -b && vite build --mode web",
     "electron:dev": "concurrently -k \"npm run dev:server\" \"npm run dev:client\" \"wait-on http://127.0.0.1:5173 http://127.0.0.1:8787 && electron electron/main.mjs\"",
     "electron:pack": "npm run build && npm run build:server && electron-builder --config electron-builder.json --publish never",
     "test": "vitest run"
