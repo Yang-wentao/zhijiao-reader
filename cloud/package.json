@@ -2,7 +2,7 @@
   "name": "zhijiao-cloud",
   "private": true,
   "version": "0.1.0",
-  "description": "知交云 API 网关：激活码鉴权 + 用量计量 + DeepSeek 转发",
+  "description": "知交云 API 网关：订阅码鉴权 + 用量计量 + DeepSeek 转发",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",

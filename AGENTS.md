@@ -205,7 +205,7 @@ npm run build:web   # 产出 site/app/（base=/app/，emptyOutDir 会先清空�
 关键事实：
 
 - 开关是 `src/lib/appMode.ts` 的 `IS_WEB_BUILD`（`import.meta.env.MODE === "web"`）。所有分支都从这里走，不要另造判定。
-- web 模式下没有本地 Express：`src/lib/api.ts` 每个函数开头分支到 `src/lib/webApi.ts`——设置存 localStorage（key `zhijiao-web-settings`），翻译/追问/额度直连**同源** `/v1/*`（`Authorization: Bearer 激活码`）。同源是关键：网关同一进程伺服 `/app/` 和 `/v1`，因此**不需要 CORS**，不要给 `cloud/server.mjs` 加 CORS 头。
+- web 模式下没有本地 Express：`src/lib/api.ts` 每个函数开头分支到 `src/lib/webApi.ts`——设置存 localStorage（key `zhijiao-web-settings`），翻译/追问/额度直连**同源** `/v1/*`（`Authorization: Bearer 订阅码`）。同源是关键：网关同一进程伺服 `/app/` 和 `/v1`，因此**不需要 CORS**，不要给 `cloud/server.mjs` 加 CORS 头。
 - 只支持知交订阅。BYOK 需要把 prompt 搬进前端（第四份拷贝）+ 任意域 CORS，明确不做。
 - 降级：划线批注仅会话内有效（不写回 PDF）、无 Obsidian 笔记（`notesReady` 恒 false）、设置弹窗隐藏 BYOK/Obsidian/服务地址（`ConnectionSettingsModal.tsx` 里的 `IS_WEB_BUILD` 分支）。
 - **`site/app/` 的构建产物是提交进仓库的**（mini 零构建，git pull 即部署）。改前端后若要更新网页版：`npm run build:web` + 提交 `site/app/` + mini 上 `bash deploy/update.sh`。
@@ -392,10 +392,10 @@ interface AIProvider {
 
 `server/providers/cloudProvider.ts` 是唯一**不直接调用模型 API** 的 provider：
 
-- 它把请求转发到 `cloud/` 目录里的网关（部署在开发者自己的机器上），带上激活码
+- 它把请求转发到 `cloud/` 目录里的网关（部署在开发者自己的机器上），带上订阅码
 - 网关负责鉴权、额度检查、用真实 API key 调模型，再把 SSE 流回传
 - 客户端这边没有 API key、没有模型选择、不构建 prompt——这些都归网关
-- `/api/cloud/balance` 代理查询激活码额度，供顶栏 chip 显示
+- `/api/cloud/balance` 代理查询订阅码额度，供顶栏 chip 显示
 
 改动知交订阅相关逻辑时，注意 `cloud/prompts.mjs` 是 `server/prompts.ts` 的刻意副本，两边都有 SYNC NOTE，改 prompt 要同步。
 

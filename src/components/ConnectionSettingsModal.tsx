@@ -96,9 +96,9 @@ export function ConnectionSettingsModal({
       return (
         <>
           <label className="settings-field settings-field-wide">
-            <span>激活码</span>
+            <span>订阅码</span>
             <input
-              aria-label="Activation code"
+              aria-label="Subscription code"
               placeholder="ZJ-XXXX-XXXX-XXXX"
               value={settings.cloud.activationCode}
               onChange={(event) =>
@@ -114,7 +114,7 @@ export function ConnectionSettingsModal({
           </label>
           <div className="settings-field settings-field-wide">
             <p className="settings-section-hint">
-              知交订阅已内置模型（DeepSeek v4-flash）与 API 额度，填入激活码即可使用，无需自己申请 API key。
+              知交订阅已内置模型（DeepSeek v4-flash）与 API 额度，填入订阅码即可使用，无需自己申请 API key。
               点下方「测试连接」可查看本月剩余额度。
             </p>
             {IS_WEB_BUILD ? (
@@ -629,9 +629,9 @@ export function ConnectionSettingsModal({
 
         <p className="settings-key-hint">
           {IS_WEB_BUILD
-            ? "激活码仅保存在当前浏览器（localStorage），不会发给除知交订阅服务器以外的任何一方。使用时选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在你的设备上，不会上传。"
+            ? "订阅码仅保存在当前浏览器（localStorage），不会发给除知交订阅服务器以外的任何一方。使用时选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在你的设备上，不会上传。"
             : activeProvider === "cloud"
-              ? "激活码仅保存在本机的用户配置目录。使用知交订阅时，选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在本地。"
+              ? "订阅码仅保存在本机的用户配置目录。使用知交订阅时，选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在本地。"
               : "API key 与 Obsidian vault 路径仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。"}
         </p>
 

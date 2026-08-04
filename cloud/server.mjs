@@ -1,4 +1,4 @@
-// 知交订阅 API 网关：激活码鉴权 → 额度检查 → DeepSeek 转发（SSE）→ 用量入账。
+// 知交订阅 API 网关：订阅码鉴权 → 限流 → 额度检查 → DeepSeek 转发（SSE）→ 用量入账。
 // The SSE event protocol (status / delta / done / error) matches the desktop
 // app's existing /api/*/stream contract so the client-side parser is reused.
 import express from "express";
@@ -6,18 +6,60 @@ import { loadEnv, CLOUD_DIR } from "./env.mjs";
 import { CloudDb } from "./db.mjs";
 import { buildAskMessages, buildTranslationMessages } from "./prompts.mjs";
 import { streamChat, estimateTokens, DeepSeekError } from "./deepseek.mjs";
+import { RateLimiter } from "./ratelimit.mjs";
 import { join } from "node:path";
 
 const MAX_SELECTION_CHARS = 8000;
 const MAX_HISTORY_TURNS = 40;
 const HEARTBEAT_MS = 10_000;
+const SWEEP_INTERVAL_MS = 5 * 60_000;
 
-export function createApp({ db, config }) {
+// Desktop installer downloads. `/latest/download/` always resolves to the
+// newest published release, but the file names carry the version — so bump
+// RELEASE_VERSION together with package.json when cutting a release.
+const RELEASE_VERSION = "1.1.2";
+const RELEASE_BASE = "https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download";
+export const DOWNLOADS = {
+  "mac-arm64": `ZhijiaoReader-${RELEASE_VERSION}-arm64.dmg`,
+  "mac-x64": `ZhijiaoReader-${RELEASE_VERSION}-x64.dmg`,
+  "win-x64": `ZhijiaoReader-Setup-${RELEASE_VERSION}-x64.exe`,
+};
+
+// The caller's real address. Requests arrive through the Cloudflare tunnel,
+// so the socket address is always the loopback — CF-Connecting-IP carries the
+// browser's address. Trusted because nothing but the tunnel can reach this
+// process (the gateway binds 127.0.0.1 only).
+export function clientIp(req) {
+  const header = req.headers["cf-connecting-ip"];
+  if (typeof header === "string" && header.trim()) {
+    return header.trim();
+  }
+  return req.ip ?? "";
+}
+
+export function createApp({ db, config, rateLimiter = new RateLimiter() }) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
 
+  // Keep the limiter's per-code maps from accumulating every code ever seen.
+  // unref() so this timer never holds the process (or a test run) open.
+  setInterval(() => rateLimiter.sweep(), SWEEP_INTERVAL_MS).unref?.();
+
   app.get("/v1/health", (_req, res) => {
     res.json({ ok: true, service: "zhijiao-cloud" });
+  });
+
+  // Stable download URLs on our own domain. The landing page links to
+  // /download/<target>; only this map knows where the installers actually
+  // live, so a new release is a one-line change here instead of an edit in
+  // every button on the page.
+  app.get("/download/:target", (req, res) => {
+    const file = DOWNLOADS[req.params.target];
+    if (!file) {
+      res.status(404).json({ error: "没有这个下载项。" });
+      return;
+    }
+    res.redirect(302, `${RELEASE_BASE}/${file}`);
   });
 
   // Landing page (repo's site/ directory) served from the same process, so the
@@ -36,15 +78,31 @@ export function createApp({ db, config }) {
     const header = req.headers.authorization ?? "";
     const code = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
     if (!code) {
-      res.status(401).json({ error: "缺少激活码。请在设置中填写知交订阅激活码。" });
+      res.status(401).json({ error: "缺少订阅码。请在设置中填写知交订阅的订阅码。" });
       return;
     }
     const row = db.authenticate(code);
     if (!row) {
-      res.status(401).json({ error: "激活码无效或已停用。" });
+      res.status(401).json({ error: "订阅码无效或已停用。" });
       return;
     }
     req.codeRow = row;
+    next();
+  });
+
+  // Rate limiting guards the streaming endpoints only — /me is cheap and gets
+  // polled by the settings screen.
+  app.use(["/v1/translate", "/v1/ask"], (req, res, next) => {
+    const verdict = rateLimiter.check(req.codeRow.code);
+    if (!verdict.ok) {
+      console.log(
+        `[zhijiao-cloud] 限流 用户=${req.codeRow.label || req.codeRow.code} ` +
+          `原因=${verdict.reason} 来源=${clientIp(req)}`,
+      );
+      res.setHeader("Retry-After", String(verdict.retryAfterSeconds));
+      res.status(429).json({ error: verdict.message });
+      return;
+    }
     next();
   });
 
@@ -76,6 +134,7 @@ export function createApp({ db, config }) {
     await streamToClient(req, res, {
       db,
       config,
+      rateLimiter,
       kind: "translate",
       temperature: 0.3,
       messages: buildTranslationMessages(selectionText, pageNumber),
@@ -107,6 +166,7 @@ export function createApp({ db, config }) {
     await streamToClient(req, res, {
       db,
       config,
+      rateLimiter,
       kind: "ask",
       temperature: 0.5,
       messages: buildAskMessages(selectionText, pageNumber, question, history),
@@ -159,7 +219,7 @@ function attachAdminRoutes(app, { db, adminToken }) {
   app.post("/admin/api/codes/:code/active", (req, res) => {
     const ok = db.setActive(req.params.code, Boolean(req.body?.active));
     if (!ok) {
-      res.status(404).json({ error: "找不到这个激活码。" });
+      res.status(404).json({ error: "找不到这个订阅码。" });
       return;
     }
     res.json(db.getCode(req.params.code));
@@ -173,7 +233,7 @@ function attachAdminRoutes(app, { db, adminToken }) {
     }
     const ok = db.setQuota(req.params.code, quotaTokens);
     if (!ok) {
-      res.status(404).json({ error: "找不到这个激活码。" });
+      res.status(404).json({ error: "找不到这个订阅码。" });
       return;
     }
     res.json(db.getCode(req.params.code));
@@ -183,16 +243,27 @@ function attachAdminRoutes(app, { db, adminToken }) {
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
     res.json(db.recentUsage(limit));
   });
+
+  // Which addresses have used one 订阅码 — the "is this code being shared?"
+  // view. Many distinct IPs on one code is the signal to disable it.
+  app.get("/admin/api/codes/:code/sources", (req, res) => {
+    res.json(db.codeSources(req.params.code));
+  });
 }
 
-async function streamToClient(req, res, { db, config, kind, temperature, messages }) {
+async function streamToClient(req, res, { db, config, rateLimiter, kind, temperature, messages }) {
   const row = req.codeRow;
+  const ip = clientIp(req);
   if (!db.hasQuotaRemaining(row)) {
     res.status(402).json({
       error: `本月额度已用完（${row.used_tokens}/${row.quota_tokens} tokens）。请联系开发者充值。`,
     });
     return;
   }
+
+  // Hold a concurrency slot for as long as this stream is open. Released in
+  // the finally below, so aborts and upstream crashes can't leak it.
+  const releaseSlot = rateLimiter ? rateLimiter.acquire(row.code) : () => {};
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -248,6 +319,7 @@ async function streamToClient(req, res, { db, config, kind, temperature, message
     }
   } finally {
     clearInterval(heartbeatId);
+    releaseSlot();
     // Bill actual usage when the upstream reported it; otherwise (aborted
     // mid-stream) fall back to a conservative estimate of what we consumed.
     const inputTokens =
@@ -255,7 +327,7 @@ async function streamToClient(req, res, { db, config, kind, temperature, message
     const outputTokens = usage?.outputTokens ?? (outputText ? estimateTokens(outputText) : 0);
     if (inputTokens > 0 || outputTokens > 0) {
       try {
-        db.recordUsage(row.code, { kind, inputTokens, outputTokens, model: config.model });
+        db.recordUsage(row.code, { kind, inputTokens, outputTokens, model: config.model, ip });
       } catch (error) {
         console.error("[zhijiao-cloud] failed to record usage:", error);
       }
@@ -263,7 +335,8 @@ async function streamToClient(req, res, { db, config, kind, temperature, message
     // One access-log line per request so `tail -f cloud.log` shows traffic live.
     console.log(
       `[zhijiao-cloud] ${new Date().toISOString()} ${kind} 用户=${row.label || row.code} ` +
-        `输入=${inputTokens} 输出=${outputTokens} tokens${clientGone ? "（客户端中途断开）" : ""}`,
+        `来源=${ip || "未知"} 输入=${inputTokens} 输出=${outputTokens} tokens` +
+        `${clientGone ? "（客户端中途断开）" : ""}`,
     );
   }
 }

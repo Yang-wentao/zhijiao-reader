@@ -35,13 +35,13 @@ switch (command) {
     const label = getFlag(args, "label", "");
     const quota = Number(getFlag(args, "quota", DEFAULT_QUOTA));
     const row = db.createCode({ label, quotaTokens: quota });
-    console.log("已创建激活码：\n" + fmt(row));
+    console.log("已创建订阅码：\n" + fmt(row));
     break;
   }
   case "list": {
     const rows = db.listCodes();
     if (rows.length === 0) {
-      console.log("还没有任何激活码。用 create 创建一个。");
+      console.log("还没有任何订阅码。用 create 创建一个。");
     } else {
       rows.forEach((row) => console.log(fmt(row)));
     }
@@ -51,32 +51,32 @@ switch (command) {
   case "enable": {
     const code = args[0];
     if (!code) {
-      console.error(`用法：node admin.mjs ${command} <激活码>`);
+      console.error(`用法：node admin.mjs ${command} <订阅码>`);
       process.exit(1);
     }
     const ok = db.setActive(code, command === "enable");
-    console.log(ok ? `已${command === "enable" ? "启用" : "停用"} ${code}` : "找不到这个激活码。");
+    console.log(ok ? `已${command === "enable" ? "启用" : "停用"} ${code}` : "找不到这个订阅码。");
     break;
   }
   case "quota": {
     const [code, quota] = args;
     if (!code || !Number.isFinite(Number(quota))) {
-      console.error("用法：node admin.mjs quota <激活码> <每月token额度>");
+      console.error("用法：node admin.mjs quota <订阅码> <每月token额度>");
       process.exit(1);
     }
     const ok = db.setQuota(code, Number(quota));
-    console.log(ok ? `已把 ${code} 的额度调整为 ${Number(quota).toLocaleString()} tokens/月` : "找不到这个激活码。");
+    console.log(ok ? `已把 ${code} 的额度调整为 ${Number(quota).toLocaleString()} tokens/月` : "找不到这个订阅码。");
     break;
   }
   case "usage": {
     const code = args[0];
     if (!code) {
-      console.error("用法：node admin.mjs usage <激活码>");
+      console.error("用法：node admin.mjs usage <订阅码>");
       process.exit(1);
     }
     const row = db.getCode(code);
     if (!row) {
-      console.log("找不到这个激活码。");
+      console.log("找不到这个订阅码。");
       break;
     }
     console.log(fmt(row));

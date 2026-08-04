@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>知交文献阅读 — 本地运行的 AI 文献阅读器</title>
-<meta name="description" content="左边读 PDF，右边看译文。公式渲染扛得住真实论文，划线批注写回 PDF 文件，本地优先，macOS / Windows 桌面版免费下载。">
+<title>知交文献阅读 — 看得懂公式的 AI 文献翻译</title>
+<meta name="description" content="左边读 PDF，右边看译文。数学公式完整渲染而不是变成乱码，划线批注写回 PDF 文件。支持网页版免安装体验与 macOS / Windows 桌面版。">
 <link rel="icon" href="icon.png">
 <meta property="og:title" content="知交文献阅读">
-<meta property="og:description" content="左边读 PDF，右边看译文。公式不再变成乱码。">
-<meta property="og:image" content="hero.png">
+<meta property="og:description" content="左边读 PDF，右边看译文。数学公式不再变成乱码。">
+<meta property="og:image" content="shot-formula.jpg">
 <style>
   :root {
     --ink: #1f2329;
@@ -58,15 +58,31 @@
   .btn-ghost { background: rgba(31, 53, 94, 0.08); color: var(--navy); }
   .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(19, 33, 68, 0.24); }
   .cta-note { font-size: 0.86rem; color: var(--muted); }
-  .cta-note a { text-decoration: none; border-bottom: 1px solid rgba(31,53,94,0.25); }
 
-  .shot { margin: 34px auto 0; max-width: 1040px; }
-  .shot img {
-    width: 100%; display: block; border-radius: 16px;
-    border: 1px solid var(--line);
-    box-shadow: 0 26px 60px rgba(19, 33, 68, 0.18);
+  /* ── showcase: screenshot + explanation, alternating on wide screens ── */
+  .showcase { display: grid; gap: 26px; align-items: center; margin-bottom: 46px; }
+  @media (min-width: 900px) {
+    .showcase { grid-template-columns: 1.55fr 1fr; gap: 38px; }
+    /* Alternating layout: the column widths must flip together with the
+       order, otherwise the screenshot lands in the narrow column. */
+    .showcase.flip { grid-template-columns: 1fr 1.55fr; }
+    .showcase.flip .shot-body { order: 1; }
+    .showcase.flip figure { order: 2; }
   }
-  .shot figcaption { font-size: 0.86rem; color: var(--muted); text-align: center; margin-top: 12px; }
+  .showcase figure { margin: 0; }
+  .showcase img {
+    width: 100%; display: block; border-radius: 14px;
+    border: 1px solid var(--line);
+    box-shadow: 0 22px 50px rgba(19, 33, 68, 0.16);
+  }
+  .showcase figcaption { font-size: 0.84rem; color: var(--muted); margin-top: 10px; }
+  .shot-body h3 { font-family: var(--sans); font-size: 1.18rem; color: var(--navy); margin: 0 0 10px; }
+  .shot-body p { margin: 0 0 12px; font-size: 0.97rem; color: #3c485e; }
+  .shot-body .pill {
+    display: inline-block; font-family: var(--sans); font-size: 0.76rem; letter-spacing: 0.04em;
+    color: var(--navy); background: rgba(31, 53, 94, 0.09);
+    padding: 4px 12px; border-radius: 999px; margin-bottom: 12px;
+  }
 
   /* ── sections ── */
   section { padding: 58px 0; }
@@ -86,6 +102,7 @@
   th { font-family: var(--sans); font-size: 0.88rem; color: var(--navy); background: rgba(31,53,94,0.045); }
   tr:last-child td { border-bottom: 0; }
   td:first-child { color: var(--muted); white-space: nowrap; }
+  .table-scroll { overflow-x: auto; }
 
   /* ── downloads ── */
   .dl-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
@@ -123,8 +140,6 @@
   /* ── footer ── */
   footer { padding: 40px 0 60px; border-top: 1px solid var(--line); margin-top: 30px; font-size: 0.9rem; color: var(--muted); }
   footer .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
-  footer a { color: var(--muted); text-decoration: none; }
-  footer a:hover { color: var(--navy); }
   footer .spacer { margin-left: auto; }
 
   /* On phones the anchor nav squeezes into unreadable vertical slivers, and
@@ -146,128 +161,158 @@
       <img src="icon.png" alt="知交文献阅读">
       <strong>知交文献阅读</strong>
       <nav>
+        <a href="#showcase">效果</a>
         <a href="#features">功能</a>
         <a href="#plans">使用方式</a>
         <a href="#download">下载</a>
         <a href="/app/">网页版</a>
-        <a href="https://github.com/Yang-wentao/zhijiao-reader">开源代码</a>
       </nav>
     </div>
   </header>
 
   <div class="hero">
     <h1>左边读 PDF，右边看译文</h1>
-    <p class="lede">一个本地运行的 AI 文献阅读器。选中一段英文，两秒内看懂它——公式不再变成乱码。</p>
-    <p class="sub">为中文学术阅读做的：数学公式、术语解释、同段追问，以及能写回 PDF 文件的划线批注。</p>
+    <p class="lede">专为中文学术阅读做的 AI 文献阅读器。选中一段英文，两秒内看懂它——公式不再变成乱码。</p>
+    <p class="sub">数学公式完整渲染、术语单独解释、同段落连续追问，以及能写回 PDF 文件的划线批注。</p>
     <div class="cta">
-      <a class="btn btn-primary" href="#download">下载桌面版</a>
-      <a class="btn btn-ghost" href="/app/">网页版 · 免安装体验</a>
+      <a class="btn btn-primary" href="/app/">立即在网页里试用</a>
+      <a class="btn btn-ghost" href="#download">下载桌面版</a>
     </div>
-    <p class="cta-note">免费开源 · macOS / Windows / Linux · <a href="https://github.com/Yang-wentao/zhijiao-reader">GitHub 源码</a> · 网页版需知交订阅激活码</p>
-
-    <figure class="shot">
-      <img src="hero.png" alt="知交文献阅读界面：左栏 PDF，右栏中文译文与渲染好的数学公式" loading="eager">
-      <figcaption>左边是 PDF 里复制出来的一团 <code>Sigma^(-1)</code>，右边是渲染好的公式与编号。</figcaption>
-    </figure>
+    <p class="cta-note">网页版免安装 · 桌面版支持 macOS / Windows · 可用订阅码，也可以填自己的 API key</p>
   </div>
 
+  <section id="showcase">
+    <h2>它和普通翻译软件差在哪</h2>
+    <p class="section-lede">差别只有一处，但对理工科论文是决定性的：公式。</p>
+
+    <div class="showcase">
+      <figure>
+        <img src="shot-formula.jpg" alt="左栏 PDF 中选中一段带公式的定义，右栏先显示 PDF 复制出的乱码原文，下方是渲染完整的中文译文" loading="lazy">
+        <figcaption>右栏上半是 PDF 直接复制出的原文，下半是知交渲染后的译文。</figcaption>
+      </figure>
+      <div class="shot-body">
+        <span class="pill">公式渲染</span>
+        <h3>从 <code>Dv x f (x)</code> 到真正的偏导数</h3>
+        <p>PDF 里的数学符号复制出来就是一堆散字符，通用翻译软件把它们原样丢给你，甚至越翻越乱。</p>
+        <p>知交会把它还原成排版正确的公式：上下标、求和号、范数、分式各归其位，连公式编号都对得上。多层自动修复专门处理模型常犯的错误——漏写定界符、编号写错位置、上标冲突。</p>
+      </div>
+    </div>
+
+    <div class="showcase flip">
+      <figure>
+        <img src="shot-highlight.jpg" alt="左栏 PDF 中一整段被高亮选中，右栏给出逐句对应的中文译文与完整公式" loading="lazy">
+        <figcaption>整段选中即译，行内公式与独立公式都保持原样。</figcaption>
+      </figure>
+      <div class="shot-body">
+        <span class="pill">整段翻译 · 划线</span>
+        <h3>整段选中，逐句对照</h3>
+        <p>不用一句句复制。拖选一整段，译文立刻流式出现在右栏，长公式、矩阵、下标索引全部保留。</p>
+        <p>看不懂就接着问：每段译文都是一张卡片，可以就这一段继续追问，上下文一直保留，术语解释会单独成段列出。</p>
+      </div>
+    </div>
+  </section>
+
   <section id="features">
-    <h2>它解决什么问题</h2>
-    <p class="section-lede">如果你读英文论文时被这三件事烦过，这个工具就是为你做的。</p>
+    <h2>完整功能</h2>
+    <p class="section-lede">为长时间读论文这件事打磨的细节。</p>
     <div class="grid">
       <div class="feature">
         <span class="icon">∑</span>
         <h3>公式扛得住真实论文</h3>
-        <p>翻译区带完整的 Markdown + KaTeX 渲染，并对模型常犯的公式错误做了多层自动修复：漏写定界符、编号写错位置、上标冲突。通用翻译软件在这里全军覆没。</p>
+        <p>完整的 Markdown + KaTeX 渲染，并对模型常犯的公式错误做了多层自动修复。这是通用翻译软件全军覆没的地方。</p>
       </div>
       <div class="feature">
         <span class="icon">✍️</span>
         <h3>划线批注写进 PDF 文件</h3>
-        <p>五色高亮加批注卡片，<code>⌘S</code> 保存后直接写入 PDF 文件本身。用 WPS、Adobe、预览打开同一个文件都看得见；别的软件做的高亮，这里也读得出来。</p>
-      </div>
-      <div class="feature">
-        <span class="icon">🔒</span>
-        <h3>本地优先，数据不被绑架</h3>
-        <p>应用跑在你自己的电脑上，PDF 文件从不离开本地，API key 只存本机。摘录可以直接追加到你的 markdown 笔记文件夹（Obsidian 兼容）。</p>
-      </div>
-      <div class="feature">
-        <span class="icon">📖</span>
-        <h3>为长时间阅读设计</h3>
-        <p>暖纸色背景、衬线正文、可调字号行距，向经典阅读器的双栏布局致敬。多标签页瞬时切换，卡片可折叠、可复制、可重试。</p>
+        <p>五色高亮加批注卡片，<code>⌘S</code> 保存后直接写入 PDF 文件本身。用 WPS、Adobe、预览打开同一个文件都看得见；别的软件做的高亮，这里也读得出来。支持撤销 / 重做。</p>
       </div>
       <div class="feature">
         <span class="icon">💬</span>
         <h3>看不懂就接着问</h3>
-        <p>每段译文都是一张卡片，可以就这一段继续追问，上下文一直保留。术语解释会单独成段列出。</p>
+        <p>每段译文都是一张卡片，可就这一段连续追问且保留上下文。术语解释单独成段，不和正文混在一起。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">📖</span>
+        <h3>为长时间阅读设计</h3>
+        <p>暖纸色背景、衬线正文、字号行距可独立调节并记住。多标签页瞬时切换并记住每篇的阅读位置，卡片可折叠、可复制、可重试。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">🔒</span>
+        <h3>PDF 不上传</h3>
+        <p>PDF 文件始终留在你自己的设备上，只有你选中的那段文字会发出去调用模型。桌面版的 API key 只存本机。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">🖱️</span>
+        <h3>顺手的小事</h3>
+        <p>拖放打开 PDF；划词即译，也可以改成「必须右键才翻译」防误触；全中文界面与错误提示；中途关掉卡片即刻停止计费。</p>
+      </div>
+      <div class="feature">
+        <span class="icon">📝</span>
+        <h3>摘录进你的笔记</h3>
+        <p>右键把原文、或原文加译文追加到本地 markdown 笔记文件夹（Obsidian 兼容），跨设备同步交给你自己的笔记工具。桌面版功能。</p>
       </div>
       <div class="feature">
         <span class="icon">🔌</span>
         <h3>模型随你换</h3>
-        <p>DeepSeek、上海交大 API、OpenAI、本地 Codex，或任意 OpenAI 兼容接口，设置里一键切换、保存前可测试连接。</p>
+        <p>桌面版可切换 DeepSeek、上海交大 API、OpenAI，或任意 OpenAI 兼容接口，保存前可测试连接。</p>
       </div>
     </div>
   </section>
 
   <section id="plans">
-    <h2>两种使用方式，同一个应用</h2>
-    <p class="section-lede">没有阉割版：功能完全一致，区别只在于模型额度谁来出。</p>
-    <table>
-      <thead>
-        <tr><th></th><th>自带 API key（免费）</th><th>知交订阅</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>需要做什么</td><td>自己申请 API key 并填入</td><td>填一个激活码</td></tr>
-        <tr><td>模型</td><td>你选：DeepSeek / SJTU / OpenAI / 自定义</td><td>内置 DeepSeek v4-flash</td></tr>
-        <tr><td>费用</td><td>软件免费，模型按你自己的账户计费</td><td>订阅内含额度，无需另外申请 API</td></tr>
-        <tr><td>网页版</td><td>—（桌面版专属）</td><td><a href="/app/">浏览器里直接用</a>，免安装</td></tr>
-        <tr><td>适合谁</td><td>已有 key，或想完全自己掌控</td><td>不想折腾 API 配置的读者</td></tr>
-      </tbody>
-    </table>
+    <h2>两种使用方式</h2>
+    <p class="section-lede">没有阉割版：阅读功能完全一致，区别只在于模型额度谁来出。</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th></th><th>知交订阅</th><th>自带 API key</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>需要做什么</td><td>填一个订阅码</td><td>自己申请 API key 并填入</td></tr>
+          <tr><td>模型</td><td>内置 DeepSeek v4-flash，无需配置</td><td>你选：DeepSeek / SJTU / OpenAI / 自定义</td></tr>
+          <tr><td>费用</td><td>订阅内含额度</td><td>软件免费，模型按你自己的账户计费</td></tr>
+          <tr><td>网页版</td><td><a href="/app/">浏览器直接用</a>，免安装</td><td>—（桌面版专属）</td></tr>
+          <tr><td>适合谁</td><td>不想折腾 API 配置的读者</td><td>已有 key，或想完全自己掌控</td></tr>
+        </tbody>
+      </table>
+    </div>
     <details class="note">
-      <summary>想要知交订阅的激活码？</summary>
-      <p>目前处于小范围测试阶段，激活码由开发者手动发放。如果你是同学或同事，直接找我要即可；也欢迎在 GitHub 上开 issue 说明用途。</p>
+      <summary>想要知交订阅的订阅码？</summary>
+      <p>目前处于小范围测试阶段，订阅码由开发者手动发放。如果你是同学或同事，直接找我要即可。</p>
     </details>
   </section>
 
   <section id="download">
-    <h2>下载</h2>
-    <p class="section-lede">当前版本 v1.1.1 · 免费 · 开源</p>
+    <h2>开始使用</h2>
+    <p class="section-lede">当前版本 v1.1.2</p>
     <div class="dl-grid">
       <div class="dl">
         <h3>网页版 · 免安装</h3>
-        <p>浏览器里直接用，适合先试后装。需要知交订阅激活码；划线与批注仅当次会话有效、不写回 PDF 文件，PDF 依旧只在你的设备上。</p>
+        <p>浏览器里直接用，适合先试后装。需要知交订阅的订阅码；划线与批注仅当次会话有效、不写回 PDF 文件。</p>
         <div class="links">
-          <a class="file" href="/app/">打开网页版<span>/app</span></a>
+          <a class="file" href="/app/">打开网页版<span>无需下载</span></a>
         </div>
       </div>
       <div class="dl">
-        <h3>macOS</h3>
+        <h3>macOS 桌面版</h3>
         <p>不确定芯片类型？点屏幕左上角 <strong>  → 关于本机</strong>，看「芯片」那一项。</p>
         <div class="links">
-          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download/ZhijiaoReader-1.1.1-arm64.dmg">Apple 芯片（M1–M4）<span>.dmg</span></a>
-          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download/ZhijiaoReader-1.1.1-x64.dmg">Intel 芯片<span>.dmg</span></a>
+          <a class="file" href="/download/mac-arm64">Apple 芯片（M1–M4）<span>.dmg</span></a>
+          <a class="file" href="/download/mac-x64">Intel 芯片<span>.dmg</span></a>
         </div>
       </div>
       <div class="dl">
-        <h3>Windows</h3>
+        <h3>Windows 桌面版</h3>
         <p>Windows 10 / 11，64 位。安装向导会引导完成。</p>
         <div class="links">
-          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download/ZhijiaoReader-Setup-1.1.1-x64.exe">安装程序<span>.exe</span></a>
-        </div>
-      </div>
-      <div class="dl">
-        <h3>Linux / 源码</h3>
-        <p>AppImage 开箱即用；或者克隆仓库自己跑。</p>
-        <div class="links">
-          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader/releases/latest">AppImage 与全部版本<span>Releases</span></a>
-          <a class="file" href="https://github.com/Yang-wentao/zhijiao-reader">从源码运行<span>GitHub</span></a>
+          <a class="file" href="/download/win-x64">安装程序<span>.exe</span></a>
         </div>
       </div>
     </div>
 
     <details class="note" open>
-      <summary>⚠️ 第一次打开会被系统拦下，这是正常的</summary>
-      <p>本项目还没有购买苹果和微软的代码签名证书（每年数千元），所以首次启动系统会警告。源码全部公开，你可以自己检视、自己构建。</p>
+      <summary>⚠️ 桌面版第一次打开会被系统拦下，这是正常的</summary>
+      <p>本软件还没有购买苹果和微软的代码签名证书（每年数千元），所以首次启动系统会警告。</p>
       <p><strong>macOS：</strong>提示「无法打开，因为 Apple 无法检查它是否包含恶意软件」时——</p>
       <ol>
         <li>在「访达」里找到 <code>/应用程序/知交文献阅读.app</code></li>
@@ -283,7 +328,7 @@
       <summary>装好之后怎么开始</summary>
       <ol>
         <li>打开应用，点右上角<strong>设置</strong></li>
-        <li>选服务提供方：有激活码就选「知交订阅」并粘贴激活码；否则选 DeepSeek 等并填入自己的 API key</li>
+        <li>有订阅码就选「知交订阅」并粘贴订阅码；否则选 DeepSeek 等服务方并填入自己的 API key</li>
         <li>点「测试连接」，通过后保存</li>
         <li>把 PDF 拖进左栏，选中一段英文，右栏就会出现译文</li>
       </ol>
@@ -293,11 +338,8 @@
 
   <footer>
     <div class="row">
-      <span>知交文献阅读 · MIT 开源</span>
-      <a href="https://github.com/Yang-wentao/zhijiao-reader">GitHub</a>
-      <a href="https://github.com/Yang-wentao/zhijiao-reader/releases">更新记录</a>
-      <a href="https://github.com/Yang-wentao/zhijiao-reader/issues">反馈问题</a>
-      <span class="spacer">与 AI 结对开发</span>
+      <span>知交文献阅读</span>
+      <span class="spacer">为中文学术阅读而做</span>
     </div>
   </footer>
 

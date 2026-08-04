@@ -147,7 +147,7 @@ describe("webTestConnectionSettings", () => {
 
   it("asks for a code before testing", async () => {
     const result = await webTestConnectionSettings(settingsWithCode("  "));
-    expect(result).toEqual({ ok: false, message: "请填写激活码。" });
+    expect(result).toEqual({ ok: false, message: "请填写订阅码。" });
   });
 
   it("surfaces the gateway's own error message", async () => {
@@ -155,11 +155,11 @@ describe("webTestConnectionSettings", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: false,
-        json: async () => ({ error: "激活码无效或已停用。" }),
+        json: async () => ({ error: "订阅码无效或已停用。" }),
       }),
     );
     const result = await webTestConnectionSettings(settingsWithCode("ZJ-BAD"));
-    expect(result).toEqual({ ok: false, message: "激活码无效或已停用。" });
+    expect(result).toEqual({ ok: false, message: "订阅码无效或已停用。" });
   });
 
   it("reports remaining quota in the desktop wording", async () => {

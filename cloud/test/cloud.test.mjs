@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { CloudDb } from "../db.mjs";
-import { createApp } from "../server.mjs";
+import { createApp, clientIp } from "../server.mjs";
+import { RateLimiter } from "../ratelimit.mjs";
 
 // ── db logic ──────────────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ function startMockUpstream() {
   });
 }
 
-function startApp(db, upstreamPort, adminToken = "") {
+function startApp(db, upstreamPort, adminToken = "", rateLimiter = undefined) {
   const app = createApp({
     db,
     config: {
@@ -72,6 +73,7 @@ function startApp(db, upstreamPort, adminToken = "") {
       thinkingMode: "disabled",
       adminToken,
     },
+    ...(rateLimiter ? { rateLimiter } : {}),
   });
   return new Promise((resolve) => {
     const server = app.listen(0, "127.0.0.1", () => resolve(server));
@@ -237,5 +239,166 @@ test("input validation", async () => {
 
   server.close();
   upstream.close();
+  db.close();
+});
+
+// ── rate limiting ─────────────────────────────────────────────────────────
+
+test("rate limiter: sliding window", () => {
+  const limiter = new RateLimiter({ windowMs: 1000, maxRequests: 3, maxConcurrent: 99 });
+  const t0 = 10_000;
+  assert.ok(limiter.check("A", t0).ok);
+  assert.ok(limiter.check("A", t0 + 100).ok);
+  assert.ok(limiter.check("A", t0 + 200).ok);
+
+  const blocked = limiter.check("A", t0 + 300);
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, "rate");
+  assert.ok(blocked.retryAfterSeconds >= 1);
+  assert.match(blocked.message, /请求过于频繁/);
+
+  // A different code has its own budget.
+  assert.ok(limiter.check("B", t0 + 300).ok);
+
+  // Once the window has slid past the old hits, the code is allowed again.
+  assert.ok(limiter.check("A", t0 + 1500).ok);
+});
+
+test("rate limiter: concurrency cap and slot release", () => {
+  const limiter = new RateLimiter({ windowMs: 60_000, maxRequests: 99, maxConcurrent: 2 });
+  assert.ok(limiter.check("A").ok);
+  const release1 = limiter.acquire("A");
+  assert.ok(limiter.check("A").ok);
+  const release2 = limiter.acquire("A");
+
+  const blocked = limiter.check("A");
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, "concurrency");
+  assert.match(blocked.message, /同时进行的请求太多/);
+
+  release1();
+  release1(); // double release must not free an extra slot
+  assert.ok(limiter.check("A").ok);
+  const release3 = limiter.acquire("A");
+  assert.equal(limiter.check("A").ok, false);
+
+  release2();
+  release3();
+  assert.equal(limiter.active.has("A"), false);
+});
+
+test("rate limiter: sweep drops idle codes", () => {
+  const limiter = new RateLimiter({ windowMs: 1000, maxRequests: 5, maxConcurrent: 5 });
+  limiter.check("A", 1000);
+  assert.equal(limiter.hits.has("A"), true);
+  limiter.sweep(5000);
+  assert.equal(limiter.hits.has("A"), false);
+});
+
+test("over the limit → 429 with Retry-After, no upstream call", async () => {
+  const db = new CloudDb(":memory:");
+  const code = db.createCode({ label: "刷子", quotaTokens: 100000 }).code;
+  const upstream = await startMockUpstream();
+  // maxRequests: 1 so the second call is refused immediately.
+  const limiter = new RateLimiter({ windowMs: 60_000, maxRequests: 1, maxConcurrent: 5 });
+  const server = await startApp(db, upstream.address().port, "", limiter);
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${code}` };
+
+  const first = await fetch(`${base}/v1/translate/stream`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ selectionText: "hello" }),
+  });
+  assert.equal(first.status, 200);
+  await first.text();
+  const billed = db.getCode(code).used_tokens;
+
+  const second = await fetch(`${base}/v1/translate/stream`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ selectionText: "hello again" }),
+  });
+  assert.equal(second.status, 429);
+  assert.equal(second.headers.get("retry-after") !== null, true);
+  assert.match((await second.json()).error, /请求过于频繁/);
+
+  // Refused before reaching DeepSeek — nothing extra was billed.
+  assert.equal(db.getCode(code).used_tokens, billed);
+
+  // /v1/me is not rate limited: the settings screen must always be able to
+  // report quota, even for a code that is being throttled.
+  const me = await fetch(`${base}/v1/me`, { headers: { Authorization: `Bearer ${code}` } });
+  assert.equal(me.status, 200);
+
+  server.close();
+  upstream.close();
+  db.close();
+});
+
+// ── source IP tracking ────────────────────────────────────────────────────
+
+test("clientIp prefers CF-Connecting-IP over the socket address", () => {
+  assert.equal(clientIp({ headers: { "cf-connecting-ip": " 203.0.113.7 " }, ip: "127.0.0.1" }), "203.0.113.7");
+  assert.equal(clientIp({ headers: {}, ip: "127.0.0.1" }), "127.0.0.1");
+  assert.equal(clientIp({ headers: { "cf-connecting-ip": "  " }, ip: "127.0.0.1" }), "127.0.0.1");
+  assert.equal(clientIp({ headers: {} }), "");
+});
+
+test("usage rows carry the caller's IP, grouped per code", async () => {
+  const db = new CloudDb(":memory:");
+  const code = db.createCode({ label: "同学甲", quotaTokens: 100000 }).code;
+  const upstream = await startMockUpstream();
+  const server = await startApp(db, upstream.address().port, "admin-secret");
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const call = async (ip) => {
+    const res = await fetch(`${base}/v1/translate/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${code}`,
+        "CF-Connecting-IP": ip,
+      },
+      body: JSON.stringify({ selectionText: "hello" }),
+    });
+    await res.text();
+  };
+  await call("203.0.113.7");
+  await call("203.0.113.7");
+  await call("198.51.100.4");
+
+  const sources = db.codeSources(code);
+  assert.equal(sources.length, 2);
+  assert.equal(sources[0].ip, "203.0.113.7");
+  assert.equal(sources[0].requests, 2);
+  assert.equal(sources[1].ip, "198.51.100.4");
+
+  // Exposed to the admin console too.
+  const auth = { Authorization: "Bearer admin-secret" };
+  const viaApi = await (await fetch(`${base}/admin/api/codes/${code}/sources`, { headers: auth })).json();
+  assert.equal(viaApi[0].ip, "203.0.113.7");
+
+  const feed = await (await fetch(`${base}/admin/api/usage?limit=5`, { headers: auth })).json();
+  assert.equal(feed[0].ip, "198.51.100.4");
+
+  server.close();
+  upstream.close();
+  db.close();
+});
+
+test("migration adds the ip column to a pre-existing usage_log", () => {
+  // Simulate a v1.1.1 database: usage_log without the ip column.
+  const db = new CloudDb(":memory:");
+  db.db.exec("DROP TABLE usage_log");
+  db.db.exec(`CREATE TABLE usage_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, ts TEXT NOT NULL,
+    kind TEXT NOT NULL, input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL,
+    model TEXT NOT NULL)`);
+  db.migrate();
+
+  const code = db.createCode({ label: "", quotaTokens: 100 }).code;
+  db.recordUsage(code, { kind: "translate", inputTokens: 1, outputTokens: 1, model: "m", ip: "203.0.113.7" });
+  assert.equal(db.recentUsage(1)[0].ip, "203.0.113.7");
   db.close();
 });

@@ -86,7 +86,7 @@ describe("CloudProvider", () => {
     const provider = new CloudProvider({ activationCode: "bad", baseUrl });
 
     await expect(provider.streamAnswer({ selectionText: "x", pageNumber: null, question: "?", history: [] })).rejects.toThrow(
-      "激活码无效",
+      "订阅码无效",
     );
   });
 

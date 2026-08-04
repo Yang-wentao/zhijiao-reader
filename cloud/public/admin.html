@@ -56,7 +56,7 @@
     <div class="cards" id="cards"></div>
 
     <section>
-      <h2>激活码</h2>
+      <h2>订阅码</h2>
       <div class="row" style="margin-bottom:12px">
         <input id="newLabel" placeholder="备注（如：张三）" style="width:150px">
         <input id="newQuota" type="number" value="3000000" style="width:130px" title="每月 token 额度">
@@ -64,7 +64,7 @@
         <span class="muted" id="createMsg"></span>
       </div>
       <div class="table-scroll"><table id="codesTable">
-        <thead><tr><th>激活码</th><th>备注</th><th>状态</th><th>本月用量</th><th></th><th>操作</th></tr></thead>
+        <thead><tr><th>订阅码</th><th>备注</th><th>状态</th><th>本月用量</th><th></th><th>操作</th></tr></thead>
         <tbody></tbody>
       </table></div>
     </section>
@@ -72,7 +72,7 @@
     <section>
       <h2>最近请求</h2>
       <div class="table-scroll"><table id="usageTable">
-        <thead><tr><th>时间</th><th>用户</th><th>类型</th><th>输入</th><th>输出</th><th>模型</th></tr></thead>
+        <thead><tr><th>时间</th><th>用户</th><th>类型</th><th>输入</th><th>输出</th><th>来源 IP</th><th>模型</th></tr></thead>
         <tbody></tbody>
       </table></div>
     </section>
@@ -110,7 +110,7 @@ async function refresh() {
     ]);
     $("login").hidden = true; $("main").hidden = false;
     $("cards").innerHTML = [
-      ["激活码", `${ov.codesActive} / ${ov.codesTotal}`, "启用 / 总数"],
+      ["订阅码", `${ov.codesActive} / ${ov.codesTotal}`, "启用 / 总数"],
       ["今日请求", fmt(ov.today.requests), `${fmt(ov.today.tokens)} tokens`],
       ["本月请求", fmt(ov.month.requests), `${fmt(ov.month.tokens)} tokens`],
       ["累计请求", fmt(ov.allTime.requests), `${fmt(ov.allTime.tokens)} tokens`],
@@ -127,14 +127,16 @@ async function refresh() {
         <td>
           <button class="mini" onclick="toggleCode('${c.code}', ${c.active ? "false" : "true"})">${c.active ? "停用" : "启用"}</button>
           <button class="mini" onclick="changeQuota('${c.code}', ${c.quota_tokens})">调额</button>
+          <button class="mini" onclick="showSources('${c.code}')">来源</button>
         </td>
       </tr>`;
     }).join("");
 
     $("usageTable").querySelector("tbody").innerHTML = usage.map((u) => `<tr>
       <td>${fmtTime(u.ts)}</td><td>${u.label || u.code}</td><td>${u.kind === "translate" ? "翻译" : "追问"}</td>
-      <td class="num">${fmt(u.input_tokens)}</td><td class="num">${fmt(u.output_tokens)}</td><td class="muted">${u.model}</td>
-    </tr>`).join("") || '<tr><td colspan="6" class="muted">还没有请求记录</td></tr>';
+      <td class="num">${fmt(u.input_tokens)}</td><td class="num">${fmt(u.output_tokens)}</td>
+      <td class="muted">${u.ip || "—"}</td><td class="muted">${u.model}</td>
+    </tr>`).join("") || '<tr><td colspan="7" class="muted">还没有请求记录</td></tr>';
   } catch (e) { if (e.message !== "unauthorized") alert(e.message); }
 }
 
@@ -150,6 +152,19 @@ async function toggleCode(code, active) {
   await api(`/admin/api/codes/${code}/active`, { method: "POST", body: JSON.stringify({ active: active === "true" || active === true }) });
   refresh();
 }
+// 「来源」：一个订阅码被哪些 IP 用过。同一时期出现多个陌生 IP，多半是码被转发了。
+async function showSources(code) {
+  const rows = await api(`/admin/api/codes/${code}/sources`);
+  if (!rows.length) {
+    alert(`${code}\n\n还没有带 IP 的用量记录。`);
+    return;
+  }
+  const lines = rows.map(
+    (r) => `${r.ip}\n    ${r.requests} 次 · 最近 ${fmtTime(r.last_seen)}`,
+  );
+  alert(`${code} 的使用来源（共 ${rows.length} 个 IP）\n\n${lines.join("\n")}`);
+}
+
 async function changeQuota(code, current) {
   const next = prompt("新的每月 token 额度：", current);
   if (!next) return;

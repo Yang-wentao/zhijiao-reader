@@ -74,7 +74,33 @@ write_plist "com.zhijiao.cloud" \
     <string>server.mjs</string>" \
   "$CLOUD_DIR" "$LOG_DIR/cloud.log"
 
-for label in com.zhijiao.tunnel com.zhijiao.cloud; do
+# 看门狗：定时任务而非常驻服务，所以用 StartInterval 而不是 KeepAlive；以 root
+# 运行（需要 launchctl kickstart 系统域服务），并把 HOME 指回用户目录，好让脚本
+# 把日志写进和其他服务同一个地方。
+cat > /Library/LaunchDaemons/com.zhijiao.watchdog.plist << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.zhijiao.watchdog</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$SCRIPT_DIR/watchdog.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>HOME</key><string>$USER_HOME</string></dict>
+  <key>WorkingDirectory</key><string>$CLOUD_DIR</string>
+  <key>RunAtLoad</key><true/>
+  <key>StartInterval</key><integer>1800</integer>
+  <key>StandardOutPath</key><string>$LOG_DIR/watchdog-stderr.log</string>
+  <key>StandardErrorPath</key><string>$LOG_DIR/watchdog-stderr.log</string>
+</dict>
+</plist>
+PLIST
+chmod 644 /Library/LaunchDaemons/com.zhijiao.watchdog.plist
+
+for label in com.zhijiao.tunnel com.zhijiao.cloud com.zhijiao.watchdog; do
   launchctl bootout "system/$label" 2>/dev/null || true
   launchctl bootstrap system "/Library/LaunchDaemons/$label.plist"
   echo "已启动 $label"
@@ -100,3 +126,6 @@ else
   echo "   curl https://api.zhijiao-reader.com/v1/health"
   echo "   隧道日志：tail -50 $LOG_DIR/tunnel.log"
 fi
+echo
+echo "── 看门狗 ──"
+echo "每 30 分钟巡检一次并写日志：tail -20 $LOG_DIR/watchdog.log"

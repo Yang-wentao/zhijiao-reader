@@ -47,7 +47,7 @@ export function createAIRouter(options: RouteOptions) {
   router.get("/cloud/balance", async (_req, res) => {
     const cloud = options.getConnectionSettings().cloud;
     if (!cloud?.activationCode?.trim()) {
-      res.status(400).json({ error: "还没有填写知交订阅激活码。" });
+      res.status(400).json({ error: "还没有填写知交订阅订阅码。" });
       return;
     }
     try {
@@ -212,7 +212,7 @@ function buildConfigResponse(options: RouteOptions) {
 
 function getProviderErrorMessage(providerName: ProviderName) {
   if (providerName === "cloud") {
-    return "还没有填写知交订阅激活码，请在设置中填写。";
+    return "还没有填写知交订阅订阅码，请在设置中填写。";
   }
   if (providerName === "openai") {
     return "还没有配置 OpenAI API key，请在设置中填写。";

@@ -234,7 +234,7 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
             activationCode: settings.cloud.activationCode,
             baseUrl: settings.cloud.baseUrl,
           })
-        : createUnavailableProvider("还没有填写知交订阅激活码，请在设置中填写。"),
+        : createUnavailableProvider("还没有填写知交订阅订阅码，请在设置中填写。"),
       isReady: cloudReady,
       model: DEFAULT_CLOUD_MODEL,
       modelOptions: [DEFAULT_CLOUD_MODEL],

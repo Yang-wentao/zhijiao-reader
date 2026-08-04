@@ -165,7 +165,7 @@ export async function webTestConnectionSettings(
 ): Promise<ConnectionTestResult> {
   const code = settings.cloud.activationCode.trim();
   if (!code) {
-    return { ok: false, message: "请填写激活码。" };
+    return { ok: false, message: "请填写订阅码。" };
   }
   try {
     const response = await fetch("/v1/me", {

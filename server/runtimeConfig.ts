@@ -269,7 +269,7 @@ export async function testConnectionSettings(input: ConnectionTestInput): Promis
   if (input.provider === "cloud") {
     const activationCode = input.cloud?.activationCode?.trim() || "";
     if (!activationCode) {
-      return { ok: false, message: "请填写激活码。" };
+      return { ok: false, message: "请填写订阅码。" };
     }
     try {
       const balance = await fetchCloudBalance(activationCode, input.cloud?.baseUrl);

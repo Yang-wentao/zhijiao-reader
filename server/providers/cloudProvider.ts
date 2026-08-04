@@ -114,7 +114,7 @@ async function readGatewayError(response: Response): Promise<string> {
     return body.error;
   }
   if (response.status === 401) {
-    return "激活码无效或已停用，请检查设置中的激活码。";
+    return "订阅码无效或已停用，请检查设置中的订阅码。";
   }
   if (response.status === 402) {
     return "本月额度已用完，请联系开发者续费。";

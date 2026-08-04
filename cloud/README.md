@@ -1,6 +1,6 @@
 # 知交订阅（zhijiao-cloud）
 
-给「知交文献阅读」订阅用户使用的 API 网关：**激活码鉴权 → 每月额度检查 → 转发 DeepSeek → 用量入账**。跑在自己的机器上（当前：Mac mini + Cloudflare Tunnel），API key 只存在服务器端，客户端里没有任何秘密。
+给「知交文献阅读」订阅用户使用的 API 网关：**订阅码鉴权 → 每月额度检查 → 转发 DeepSeek → 用量入账**。跑在自己的机器上（当前：Mac mini + Cloudflare Tunnel），API key 只存在服务器端，客户端里没有任何秘密。
 
 - 技术形态：零构建、近零依赖（Express + Node 内置 `node:sqlite` / `fetch`），`node server.mjs` 直接跑
 - SSE 事件协议与桌面端 `/api/*/stream` 完全一致（status / delta / done / error）
@@ -39,7 +39,7 @@ sudo bash deploy/setup-mini.sh
 ```bash
 cd ~/zhijiao-reader/cloud
 
-# 发一个激活码（默认每月 300 万 tokens）
+# 发一个订阅码（默认每月 300 万 tokens）
 node admin.mjs create --label 张三 --quota 3000000
 
 # 看所有码和用量

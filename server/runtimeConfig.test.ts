@@ -53,7 +53,7 @@ describe("runtime connection config", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.message).toContain("激活码");
+    expect(result.message).toContain("订阅码");
   });
 
   it("merges a saved config file over env defaults", async () => {

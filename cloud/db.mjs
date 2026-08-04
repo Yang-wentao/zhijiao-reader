@@ -1,4 +1,4 @@
-// SQLite storage for activation codes + usage metering.
+// SQLite storage for 订阅码 + usage metering.
 // Uses node:sqlite (built into Node 22.5+) — no native compilation on deploy.
 import { DatabaseSync } from "node:sqlite";
 import { randomBytes } from "node:crypto";
@@ -49,10 +49,21 @@ export class CloudDb {
         kind TEXT NOT NULL,
         input_tokens INTEGER NOT NULL,
         output_tokens INTEGER NOT NULL,
-        model TEXT NOT NULL
+        model TEXT NOT NULL,
+        ip TEXT NOT NULL DEFAULT ''
       );
       CREATE INDEX IF NOT EXISTS idx_usage_code_ts ON usage_log(code, ts);
     `);
+    this.migrate();
+  }
+
+  // Additive migrations for databases created by an earlier version. Each one
+  // must be safe to run on every startup.
+  migrate() {
+    const columns = this.db.prepare("PRAGMA table_info(usage_log)").all();
+    if (!columns.some((column) => column.name === "ip")) {
+      this.db.exec("ALTER TABLE usage_log ADD COLUMN ip TEXT NOT NULL DEFAULT ''");
+    }
   }
 
   createCode({ label = "", quotaTokens }) {
@@ -109,16 +120,28 @@ export class CloudDb {
     return row.used_tokens < row.quota_tokens;
   }
 
-  recordUsage(code, { kind, inputTokens, outputTokens, model }, now = new Date()) {
+  recordUsage(code, { kind, inputTokens, outputTokens, model, ip = "" }, now = new Date()) {
     const total = inputTokens + outputTokens;
     this.db
       .prepare("UPDATE codes SET used_tokens = used_tokens + ? WHERE code = ?")
       .run(total, code);
     this.db
       .prepare(
-        "INSERT INTO usage_log (code, ts, kind, input_tokens, output_tokens, model) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO usage_log (code, ts, kind, input_tokens, output_tokens, model, ip) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
-      .run(code, now.toISOString(), kind, inputTokens, outputTokens, model);
+      .run(code, now.toISOString(), kind, inputTokens, outputTokens, model, ip);
+  }
+
+  // Which IPs have used one 订阅码 — the sharing / abuse check. A code used
+  // from many addresses at once has probably been passed around.
+  codeSources(code, limit = 20) {
+    return this.db
+      .prepare(
+        `SELECT ip, COUNT(*) AS requests, MIN(ts) AS first_seen, MAX(ts) AS last_seen
+         FROM usage_log WHERE code = ? AND ip <> ''
+         GROUP BY ip ORDER BY requests DESC LIMIT ?`,
+      )
+      .all(code, limit);
   }
 
   usageSummary(code) {
@@ -159,7 +182,7 @@ export class CloudDb {
   recentUsage(limit = 50) {
     return this.db
       .prepare(
-        `SELECT u.ts, u.kind, u.input_tokens, u.output_tokens, u.model, u.code,
+        `SELECT u.ts, u.kind, u.input_tokens, u.output_tokens, u.model, u.code, u.ip,
                 COALESCE(c.label, '') AS label
          FROM usage_log u LEFT JOIN codes c ON c.code = u.code
          ORDER BY u.id DESC LIMIT ?`,

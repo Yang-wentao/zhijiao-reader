@@ -76,12 +76,18 @@ textarea {
   border-bottom: 1px solid rgba(31, 35, 41, 0.08);
 }
 
+/* The toolbar must stay on ONE row at every pane width. It used to wrap, and
+   on a narrow pane the zoom/save controls dropped to a second line while the
+   right pane squeezed 设置 into vertical text. Only the tab strip is
+   flexible: it shrinks (and scrolls internally) while every button keeps its
+   size.
+   Deliberately NOT `overflow-x: auto` here — the search popover renders
+   inside this row, and a scroll container would clip it. */
 .pdf-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
 
 .upload-button {
@@ -95,6 +101,8 @@ textarea {
   color: #fff;
   cursor: pointer;
   font-size: 0.95rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .upload-button input {
@@ -104,21 +112,30 @@ textarea {
   cursor: pointer;
 }
 
+/* Buttons never shrink — shrinking them is what produced vertical text. */
 .pdf-toolbar-meta {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-left: auto;
+  flex: 0 0 auto;
 }
 
+/* flex-basis 0 (not 320px): the strip absorbs all the shrinking instead of
+   demanding 320px and pushing everything else onto a second row. */
 .pdf-tab-strip {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1 1 320px;
-  overflow: auto;
+  flex: 1 1 0;
+  overflow-x: auto;
+  scrollbar-width: none;
   padding-bottom: 2px;
+}
+
+.pdf-tab-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .pdf-tab {
@@ -128,6 +145,7 @@ textarea {
   padding: 4px;
   border-radius: 999px;
   background: rgba(31, 53, 94, 0.06);
+  min-width: 0;
 }
 
 .pdf-tab.active {
@@ -144,6 +162,7 @@ textarea {
 
 .pdf-tab-button {
   max-width: 220px;
+  min-width: 0;
   padding: 6px 10px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -154,6 +173,7 @@ textarea {
   width: 28px;
   height: 28px;
   border-radius: 999px;
+  flex: 0 0 auto;
 }
 
 .zoom-controls {
@@ -240,6 +260,10 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* Anchors the typography popover to the panel instead of to the Aa button:
+     anchored to the button it hung off the left edge of a narrow right pane
+     and lost its labels. */
+  position: relative;
 }
 
 .assistant-summary-row,
@@ -250,22 +274,41 @@ textarea {
   min-width: 0;
 }
 
+/* Same one-row rule as the PDF toolbar: the title gives up space first (it
+   ellipsizes), the buttons keep their size. No scroll container here either —
+   the typography (Aa) popover lives in this row and would be clipped. */
+.assistant-summary-row {
+  flex-wrap: nowrap;
+}
+
 .assistant-title-group {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.assistant-title-group h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assistant-summary-row-compact {
   justify-content: space-between;
 }
 
+/* Shrinkable so the model chip inside can give up width — the buttons keep
+   their size (see the shared button rule), so on a very narrow right pane the
+   chip clips first and 设置 stays fully clickable. */
 .assistant-header-actions {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 0 1 auto;
+  margin-left: auto;
 }
 
 .assistant-controls-row {
@@ -288,6 +331,9 @@ textarea {
   padding: 8px 12px;
   border-radius: 999px;
   background: rgba(31, 53, 94, 0.05);
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .model-chip-row-compact {
@@ -375,8 +421,10 @@ textarea {
 }
 
 /* ====== Right-pane typography popover (字号 + 行距) ====== */
+/* Intentionally NOT a positioning context — the popover anchors to
+   .assistant-header so it stays inside a narrow right pane. */
 .typography-control {
-  position: relative;
+  position: static;
 }
 
 .typography-trigger {
@@ -389,9 +437,12 @@ textarea {
 
 .typography-popover {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  top: calc(100% - 6px);
+  /* Matches .assistant-header's horizontal padding so the popover lines up
+     under the buttons instead of hanging off the pane. */
+  right: 20px;
   min-width: 240px;
+  max-width: calc(100% - 40px);
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(31, 35, 41, 0.1);
   border-radius: 14px;
@@ -665,6 +716,10 @@ textarea {
   padding: 9px 14px;
   cursor: pointer;
   transition: transform 120ms ease, opacity 120ms ease;
+  /* Labels must never break mid-word into vertical text when a toolbar runs
+     short of space — «设置» collapsing to 设 / 置 was the visible symptom. */
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .secondary-button,
@@ -1121,14 +1176,10 @@ textarea {
     min-height: 45vh;
   }
 
-  .pdf-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .assistant-summary-row,
-  .assistant-controls-row,
-  .assistant-title-group {
+  /* Deliberately NOT stacking the toolbar here: the one-row rules above hold
+     at phone widths too (the row scrolls horizontally instead of wrapping),
+     which keeps 打开 PDF / 保存 / 缩放 where users expect them. */
+  .assistant-controls-row {
     flex-wrap: wrap;
   }
 
@@ -1142,10 +1193,6 @@ textarea {
     align-items: stretch;
   }
 
-  .pdf-toolbar-meta {
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
 }
 
 .pdf-context-menu {
