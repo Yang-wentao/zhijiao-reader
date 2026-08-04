@@ -4,7 +4,14 @@ import { searchPlugin } from "@react-pdf-viewer/search";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/search/lib/styles/index.css";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.js?url";
+import { IS_WEB_BUILD } from "../lib/appMode";
 import type { HighlightRect, PdfContextSelection, PdfHighlight, PdfTabSummary } from "../types";
+
+// A paper to try the reader on when the visitor has none to hand. Served by
+// the gateway next to the app, fetched straight into memory and handed to the
+// normal open-a-file path — nothing is saved to the visitor's device.
+const SAMPLE_PDF_URL = "/deepseek-v4-report.pdf";
+const SAMPLE_PDF_NAME = "DeepSeek V4 技术报告.pdf";
 
 type PdfPaneProps = {
   tabs: PdfTabSummary[];
@@ -59,6 +66,7 @@ export function PdfPane({
   onTabPageIndexChange,
   onTabScrollTopChange,
 }: PdfPaneProps) {
+  const [sampleState, setSampleState] = useState<"idle" | "loading" | "error">("idle");
   const [zoomLevel, setZoomLevel] = useState<number | SpecialZoomLevel>(SpecialZoomLevel.PageWidth);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const dragDepthRef = useRef(0);
@@ -82,6 +90,24 @@ export function PdfPane({
     );
     for (const file of files) {
       onFileSelected(file);
+    }
+  }
+
+  // Downloads into a Blob, wraps it in a File, and feeds it to the same
+  // handler a picked file goes through — so the sample opens exactly like a
+  // local PDF and never lands in the visitor's downloads folder.
+  async function openSamplePdf() {
+    setSampleState("loading");
+    try {
+      const response = await fetch(SAMPLE_PDF_URL);
+      if (!response.ok) {
+        throw new Error(String(response.status));
+      }
+      const blob = await response.blob();
+      onFileSelected(new File([blob], SAMPLE_PDF_NAME, { type: "application/pdf" }));
+      setSampleState("idle");
+    } catch {
+      setSampleState("error");
     }
   }
 
@@ -233,6 +259,22 @@ export function PdfPane({
                 />
                 <span>选择 PDF 文件</span>
               </label>
+              {IS_WEB_BUILD ? (
+                <div className="pdf-dropzone-sample">
+                  <p>手边没有 PDF？</p>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={sampleState === "loading"}
+                    onClick={() => void openSamplePdf()}
+                  >
+                    {sampleState === "loading" ? "正在打开…" : "试读 DeepSeek V4 技术报告"}
+                  </button>
+                  {sampleState === "error" ? (
+                    <p className="pdf-dropzone-sample-error">没能打开示例文件，请稍后重试。</p>
+                  ) : null}
+                </div>
+              ) : null}
               <p className="pdf-dropzone-hint">
                 建议使用文字可选的 PDF；扫描图片版 PDF 暂不支持。
               </p>

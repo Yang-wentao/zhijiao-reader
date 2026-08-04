@@ -74,25 +74,50 @@ export class CloudDb {
   // Additive migrations for databases created by an earlier version. Each one
   // must be safe to run on every startup.
   migrate() {
-    const columns = this.db.prepare("PRAGMA table_info(usage_log)").all();
-    if (!columns.some((column) => column.name === "ip")) {
+    const usageColumns = this.db.prepare("PRAGMA table_info(usage_log)").all();
+    if (!usageColumns.some((column) => column.name === "ip")) {
       this.db.exec("ALTER TABLE usage_log ADD COLUMN ip TEXT NOT NULL DEFAULT ''");
+    }
+    // '' = never expires, which is what every code created before this
+    // column existed should keep doing.
+    const codeColumns = this.db.prepare("PRAGMA table_info(codes)").all();
+    if (!codeColumns.some((column) => column.name === "expires_at")) {
+      this.db.exec("ALTER TABLE codes ADD COLUMN expires_at TEXT NOT NULL DEFAULT ''");
     }
   }
 
   // `code` is optional: omit it for a random ZJ-XXXX-XXXX-XXXX, or pass one
-  // to mint a chosen code.
-  createCode({ label = "", quotaTokens, code = "" }) {
+  // to mint a chosen code. `expiresInDays` makes it a time-limited code —
+  // a public trial code should always have one, so the promised end date is
+  // enforced by the gateway instead of by remembering to disable it.
+  createCode({ label = "", quotaTokens, code = "", expiresInDays = 0, now = new Date() }) {
     const finalCode = code ? normalizeCode(code) : generateCode();
     if (this.getCode(finalCode)) {
       throw new Error(`订阅码 ${finalCode} 已存在。`);
     }
+    const days = Number(expiresInDays);
+    const expiresAt =
+      Number.isFinite(days) && days > 0
+        ? new Date(now.getTime() + days * 86_400_000).toISOString()
+        : "";
     this.db
       .prepare(
-        "INSERT INTO codes (code, label, quota_tokens, period, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO codes (code, label, quota_tokens, period, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
       )
-      .run(finalCode, label, quotaTokens, currentPeriod(), new Date().toISOString());
+      .run(finalCode, label, quotaTokens, currentPeriod(), now.toISOString(), expiresAt);
     return this.getCode(finalCode);
+  }
+
+  setExpiry(code, expiresInDays, now = new Date()) {
+    const days = Number(expiresInDays);
+    const expiresAt =
+      Number.isFinite(days) && days > 0
+        ? new Date(now.getTime() + days * 86_400_000).toISOString()
+        : "";
+    const result = this.db
+      .prepare("UPDATE codes SET expires_at = ? WHERE code = ?")
+      .run(expiresAt, code);
+    return result.changes > 0;
   }
 
   getCode(code) {
@@ -123,6 +148,9 @@ export class CloudDb {
   authenticate(code, now = new Date()) {
     const row = this.getCode(code);
     if (!row || !row.active) {
+      return null;
+    }
+    if (row.expires_at && new Date(row.expires_at) <= now) {
       return null;
     }
     const period = currentPeriod(now);

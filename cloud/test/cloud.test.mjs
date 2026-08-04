@@ -529,3 +529,55 @@ test("repeated wrong codes over HTTP get 429, valid code still works", async () 
   upstream.close();
   db.close();
 });
+
+// ── time-limited trial codes ──────────────────────────────────────────────
+
+test("expiring code stops authenticating after its deadline", () => {
+  const db = new CloudDb(":memory:");
+  const start = new Date("2026-08-04T00:00:00.000Z");
+  const row = db.createCode({ label: "试用", quotaTokens: 1000, code: "ZJ-TRY-7", expiresInDays: 7, now: start });
+  assert.equal(row.expires_at, "2026-08-11T00:00:00.000Z");
+
+  assert.ok(db.authenticate("ZJ-TRY-7", new Date("2026-08-10T23:59:00.000Z")));
+  assert.equal(db.authenticate("ZJ-TRY-7", new Date("2026-08-11T00:00:01.000Z")), null);
+
+  // Extending it brings the code back.
+  db.setExpiry("ZJ-TRY-7", 30, new Date("2026-08-12T00:00:00.000Z"));
+  assert.ok(db.authenticate("ZJ-TRY-7", new Date("2026-08-20T00:00:00.000Z")));
+
+  // 0 days = no expiry at all.
+  db.setExpiry("ZJ-TRY-7", 0);
+  assert.equal(db.getCode("ZJ-TRY-7").expires_at, "");
+  db.close();
+});
+
+test("codes without an expiry are unaffected", () => {
+  const db = new CloudDb(":memory:");
+  const row = db.createCode({ label: "长期", quotaTokens: 1000 });
+  assert.equal(row.expires_at, "");
+  assert.ok(db.authenticate(row.code, new Date("2099-01-01T00:00:00.000Z")));
+  db.close();
+});
+
+test("expired code gets a message that says what to do", async () => {
+  const db = new CloudDb(":memory:");
+  // Expired an hour ago.
+  const code = db.createCode({
+    label: "试用",
+    quotaTokens: 1000,
+    code: "ZJ-GONE",
+    expiresInDays: 1,
+    now: new Date(Date.now() - 25 * 3600_000),
+  }).code;
+  const upstream = await startMockUpstream();
+  const server = await startApp(db, upstream.address().port);
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const res = await fetch(`${base}/v1/me`, { headers: { Authorization: `Bearer ${code}` } });
+  assert.equal(res.status, 401);
+  assert.match((await res.json()).error, /已过期/);
+
+  server.close();
+  upstream.close();
+  db.close();
+});

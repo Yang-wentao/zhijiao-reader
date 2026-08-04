@@ -2,6 +2,8 @@
 // 发码 / 管码命令行。在 mini 上 SSH 进来用：
 //   node admin.mjs create --label 张三 --quota 3000000
 //   node admin.mjs create --label 小红书 --code ZJ-MATH-2026   # 自定义好记的码
+//   node admin.mjs create --label 试用 --code ZJ-TRY-2026 --days 7  # 7 天后自动失效
+//   node admin.mjs expire ZJ-TRY-2026 7      # 改有效期（0 = 永不过期）
 //   node admin.mjs list
 //   node admin.mjs disable ZJ-XXXX-XXXX-XXXX
 //   node admin.mjs enable  ZJ-XXXX-XXXX-XXXX
@@ -18,9 +20,11 @@ const db = new CloudDb(config.dbPath);
 const DEFAULT_QUOTA = 3_000_000; // 每月 300 万 tokens，正常阅读用不完
 
 function fmt(row) {
-  const status = row.active ? "启用" : "停用";
+  const expired = row.expires_at && new Date(row.expires_at) <= new Date();
+  const status = expired ? "已过期" : row.active ? "启用" : "停用";
+  const until = row.expires_at ? `  有效期至 ${row.expires_at.slice(0, 10)}` : "";
   const used = `${row.used_tokens.toLocaleString()}/${row.quota_tokens.toLocaleString()}`;
-  return `${row.code}  [${status}]  ${row.label || "(未命名)"}  本月已用 ${used} tokens  (${row.period})`;
+  return `${row.code}  [${status}]  ${row.label || "(未命名)"}  本月已用 ${used} tokens  (${row.period})${until}`;
 }
 
 function getFlag(args, name, fallback) {
@@ -36,8 +40,9 @@ switch (command) {
     const label = getFlag(args, "label", "");
     const quota = Number(getFlag(args, "quota", DEFAULT_QUOTA));
     const code = getFlag(args, "code", "");
+    const days = Number(getFlag(args, "days", 0));
     try {
-      const row = db.createCode({ label, quotaTokens: quota, code });
+      const row = db.createCode({ label, quotaTokens: quota, code, expiresInDays: days });
       console.log("已创建订阅码：\n" + fmt(row));
       if (code) {
         console.log(
@@ -58,6 +63,16 @@ switch (command) {
     } else {
       rows.forEach((row) => console.log(fmt(row)));
     }
+    break;
+  }
+  case "expire": {
+    const [code, days] = args;
+    if (!code || days === undefined) {
+      console.error("用法：node admin.mjs expire <订阅码> <天数>   （0 = 永不过期）");
+      process.exit(1);
+    }
+    const ok = db.setExpiry(code, Number(days));
+    console.log(ok ? fmt(db.getCode(code)) : "找不到这个订阅码。");
     break;
   }
   case "disable":

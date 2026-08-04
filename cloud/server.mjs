@@ -102,7 +102,15 @@ export function createApp({
     const row = db.authenticate(code);
     if (!row) {
       authThrottle.recordFailure(ip);
-      res.status(401).json({ error: "订阅码无效或已停用。" });
+      // Distinguish "your trial ran out" from "that code is wrong" — the
+      // first has an obvious next step, the second doesn't.
+      const known = db.getCode(code);
+      const expired = known?.expires_at && new Date(known.expires_at) <= new Date();
+      res.status(401).json({
+        error: expired
+          ? "这个试用码已过期。可以联系作者领取长期订阅码。"
+          : "订阅码无效或已停用。",
+      });
       return;
     }
     authThrottle.recordSuccess(ip);
@@ -229,13 +237,14 @@ function attachAdminRoutes(app, { db, adminToken }) {
   app.post("/admin/api/codes", (req, res) => {
     const label = typeof req.body?.label === "string" ? req.body.label.trim() : "";
     const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+    const expiresInDays = Number(req.body?.expiresInDays) || 0;
     const quotaTokens = Number(req.body?.quotaTokens);
     if (!Number.isFinite(quotaTokens) || quotaTokens <= 0) {
       res.status(400).json({ error: "额度必须是正数。" });
       return;
     }
     try {
-      res.json(db.createCode({ label, quotaTokens, code }));
+      res.json(db.createCode({ label, quotaTokens, code, expiresInDays }));
     } catch (error) {
       // Bad shape or duplicate — both are the caller's problem, not a fault.
       res.status(400).json({ error: error.message });
@@ -258,6 +267,15 @@ function attachAdminRoutes(app, { db, adminToken }) {
       return;
     }
     const ok = db.setQuota(req.params.code, quotaTokens);
+    if (!ok) {
+      res.status(404).json({ error: "找不到这个订阅码。" });
+      return;
+    }
+    res.json(db.getCode(req.params.code));
+  });
+
+  app.post("/admin/api/codes/:code/expiry", (req, res) => {
+    const ok = db.setExpiry(req.params.code, Number(req.body?.expiresInDays) || 0);
     if (!ok) {
       res.status(404).json({ error: "找不到这个订阅码。" });
       return;

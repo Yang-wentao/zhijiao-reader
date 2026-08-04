@@ -87,6 +87,27 @@
     border-bottom: 2px solid rgba(31, 53, 94, 0.16);
   }
 
+  /* ── follow-up Q&A: two tall right-pane shots side by side ── */
+  .ask-block { margin-top: 8px; }
+  .ask-block h3 { font-family: var(--sans); font-size: 1.32rem; color: var(--navy); margin: 0 0 10px; }
+  .ask-lede { color: #3c485e; margin: 0 0 24px; font-size: 0.97rem; max-width: 60ch; }
+  .ask-grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .ask-grid figure { margin: 0; }
+  /* The two shots are naturally different heights; cropping both from the
+     top to a shared height keeps the pair tidy and loses only the empty
+     compose box at the bottom. */
+  .ask-grid img {
+    width: 100%; display: block; border-radius: 14px;
+    height: 620px; object-fit: cover; object-position: top;
+    border: 1px solid var(--line);
+    box-shadow: 0 20px 44px rgba(19, 33, 68, 0.14);
+  }
+  @media (max-width: 720px) {
+    .ask-grid img { height: 460px; }
+  }
+  .ask-grid figcaption { font-size: 0.88rem; color: var(--muted); margin-top: 12px; }
+  .ask-grid figcaption strong { color: var(--navy); }
+
   /* ── sections ── */
   section { padding: 58px 0; }
   h2 { font-family: var(--sans); font-size: 1.5rem; color: var(--navy); margin: 0 0 8px; }
@@ -231,14 +252,30 @@
 
     <div class="showcase flip">
       <figure>
-        <img src="shot-theorem.jpg" alt="左栏 PDF 中连续多段定理被高亮选中，右栏给出逐段对应的中文译文与多个独立公式" loading="lazy">
-        <figcaption>连续几段定理一次选中，每个独立公式都单独成行还原。</figcaption>
+        <img src="shot-formula.jpg" alt="左栏 PDF 中一整段公式推导被高亮选中，右栏给出对应的中文译文与带编号的独立公式" loading="lazy">
+        <figcaption>整段选中即译，带编号的独立公式逐个单独成行还原。</figcaption>
       </figure>
       <div class="shot-body">
         <span class="pill">整段翻译 · 划线</span>
         <h3>整段选中，逐段对照</h3>
-        <p>不用一句句复制。拖选连续几段，译文立刻流式出现在右栏，定理、假设、误差分解一段不落。</p>
-        <p>看不懂就接着问。每段译文都是一张卡片，可以就这一段连续追问，上下文一直保留，术语解释单独成段。</p>
+        <p>不用一句句复制。拖选连续几段，译文立刻流式出现在右栏，公式编号跟原文一一对上。</p>
+        <p>上图读的正是 DeepSeek V4 技术报告——你可以在<a href="/app/">网页版</a>里一键打开同一篇，自己试。</p>
+      </div>
+    </div>
+
+    <div class="ask-block">
+      <span class="pill">追问</span>
+      <h3>看不懂？就着这一段接着问</h3>
+      <p class="ask-lede">译文不是终点。每张卡片都能就这一段继续追问，上下文一直保留——可以点预设问题，也可以自己打字问。</p>
+      <div class="ask-grid">
+        <figure>
+          <img src="shot-ask-typed.jpg" alt="用户输入「帮我简单几句话讲讲 cox 模型」，AI 给出解释并渲染出模型公式" loading="lazy">
+          <figcaption><strong>自己提问</strong>：问「帮我简单几句话讲讲 Cox 模型」，回答里的公式照样是渲染好的。</figcaption>
+        </figure>
+        <figure>
+          <img src="shot-ask-quick.jpg" alt="点击预设问题「这段的核心结论是什么？」，AI 给出分点总结" loading="lazy">
+          <figcaption><strong>一键追问</strong>：点「这段的核心结论是什么？」，直接给分点总结。</figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -309,7 +346,8 @@
     </div>
     <details class="note">
       <summary>想要知交订阅的订阅码？</summary>
-      <p>扫下方二维码进我的小红书主页，<strong>置顶动态里有可用的订阅码</strong>；也可以直接加微信找我要。</p>
+      <p>扫下方二维码进我的小红书主页，<strong>置顶动态里有公开试用码，有效期 7 天</strong>，额度管够，直接填进去就能用。</p>
+      <p>想要更长期、额度更高的订阅码，<strong>私信我领取</strong>即可。</p>
       <p><a href="#contact">→ 到页面底部扫码</a></p>
     </details>
   </section>
@@ -320,7 +358,7 @@
     <div class="dl-grid">
       <div class="dl">
         <h3>网页版 · 免安装</h3>
-        <p>浏览器里直接用，适合先试后装。需要订阅码；划线与批注仅当次会话有效，不写回 PDF 文件。</p>
+        <p>浏览器里直接用，适合先试后装。手边没有 PDF 也没关系，内置了一篇 DeepSeek V4 技术报告可以直接试。</p>
         <div class="links">
           <a class="file" href="/app/">打开网页版<span>无需下载</span></a>
         </div>
@@ -376,14 +414,14 @@
         <img src="contact-xhs.jpg" alt="作者小红书二维码" loading="lazy">
         <figcaption>
           <strong>小红书 · 领订阅码</strong>
-          <span>扫码进主页，置顶动态里有可用的订阅码</span>
+          <span>扫码进主页，置顶动态里有 7 天公开试用码</span>
         </figcaption>
       </figure>
       <figure class="qr-card">
         <img src="contact-wechat.jpg" alt="作者微信二维码" loading="lazy">
         <figcaption>
           <strong>加微信</strong>
-          <span>反馈问题、提功能建议，也可以直接问我要码</span>
+          <span>反馈问题、提建议，或私信领长期订阅码</span>
         </figcaption>
       </figure>
       <figure class="qr-card">
