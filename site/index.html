@@ -8,7 +8,7 @@
 <link rel="icon" href="icon.png">
 <meta property="og:title" content="知交文献阅读">
 <meta property="og:description" content="左边读 PDF，右边看译文。数学公式不再变成乱码。">
-<meta property="og:image" content="shot-formula.jpg">
+<meta property="og:image" content="shot-algorithm.jpg">
 <style>
   :root {
     --ink: #1f2329;
@@ -137,6 +137,28 @@
   pre { background: rgba(31,53,94,0.06); padding: 12px 14px; border-radius: 10px; overflow-x: auto; margin: 10px 0 0; }
   pre code { background: none; padding: 0; }
 
+  /* ── contact / sponsor QR codes ── */
+  .qr-grid {
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 320px));
+    justify-content: center;
+  }
+  .qr-card {
+    margin: 0; background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 18px 18px 20px;
+    box-shadow: 0 12px 28px rgba(19, 33, 68, 0.07);
+    display: flex; flex-direction: column; gap: 14px; align-items: center;
+  }
+  /* Fixed height + contain: the two screenshots have different aspect ratios,
+     and without this the cards sit at visibly different heights. */
+  .qr-card img {
+    width: 100%; max-width: 260px; height: 290px; object-fit: contain;
+    display: block; border-radius: 10px; background: #fff;
+  }
+  .qr-card figcaption { text-align: center; display: flex; flex-direction: column; gap: 4px; }
+  .qr-card strong { font-family: var(--sans); font-size: 1rem; color: var(--navy); }
+  .qr-card span { font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
+
   /* ── footer ── */
   footer { padding: 40px 0 60px; border-top: 1px solid var(--line); margin-top: 30px; font-size: 0.9rem; color: var(--muted); }
   footer .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
@@ -166,6 +188,7 @@
         <a href="#plans">使用方式</a>
         <a href="#download">下载</a>
         <a href="/app/">网页版</a>
+        <a href="#contact">联系作者</a>
       </nav>
     </div>
   </header>
@@ -187,26 +210,26 @@
 
     <div class="showcase">
       <figure>
-        <img src="shot-formula.jpg" alt="左栏 PDF 中选中一段带公式的定义，右栏先显示 PDF 复制出的乱码原文，下方是渲染完整的中文译文" loading="lazy">
-        <figcaption>右栏上半是 PDF 直接复制出的原文，下半是知交渲染后的译文。</figcaption>
+        <img src="shot-algorithm.jpg" alt="左栏 PDF 中一整段算法伪代码被选中，右栏上半是复制出的乱码原文，下半是完整还原的中文算法" loading="lazy">
+        <figcaption>右栏上半是 PDF 直接复制出的原文，下半是知交渲染后的译文。同一段内容，两个世界。</figcaption>
       </figure>
       <div class="shot-body">
         <span class="pill">公式渲染</span>
-        <h3>从 <code>Dv x f (x)</code> 到真正的偏导数</h3>
-        <p>PDF 里的数学符号复制出来就是一堆散字符，通用翻译软件把它们原样丢给你，甚至越翻越乱。</p>
-        <p>知交会把它还原成排版正确的公式：上下标、求和号、范数、分式各归其位，连公式编号都对得上。多层自动修复专门处理模型常犯的错误——漏写定界符、编号写错位置、上标冲突。</p>
+        <h3>从 <code>bv = bΩ 1 n P i</code> 到真正的公式</h3>
+        <p>PDF 里的数学符号复制出来就是一堆散字符——帽子掉了、求和号成了字母 P、下标全部散落。通用翻译软件把这堆东西原样丢给你，甚至越翻越乱。</p>
+        <p>知交把它还原成排版正确的公式：上下标、求和号、范数、分式各归其位，连算法的行号和缩进都保留。多层自动修复专门处理模型常犯的错误——漏写定界符、编号写错位置、上标冲突。</p>
       </div>
     </div>
 
     <div class="showcase flip">
       <figure>
-        <img src="shot-highlight.jpg" alt="左栏 PDF 中一整段被高亮选中，右栏给出逐句对应的中文译文与完整公式" loading="lazy">
-        <figcaption>整段选中即译，行内公式与独立公式都保持原样。</figcaption>
+        <img src="shot-theorem.jpg" alt="左栏 PDF 中连续多段定理被高亮选中，右栏给出逐段对应的中文译文与多个独立公式" loading="lazy">
+        <figcaption>连续几段定理一次选中，每个独立公式都单独成行还原。</figcaption>
       </figure>
       <div class="shot-body">
         <span class="pill">整段翻译 · 划线</span>
-        <h3>整段选中，逐句对照</h3>
-        <p>不用一句句复制。拖选一整段，译文立刻流式出现在右栏，长公式、矩阵、下标索引全部保留。</p>
+        <h3>整段选中，逐段对照</h3>
+        <p>不用一句句复制。拖选连续几段，译文立刻流式出现在右栏，定理、假设、误差分解一段不落，长公式与矩阵全部保留。</p>
         <p>看不懂就接着问：每段译文都是一张卡片，可以就这一段继续追问，上下文一直保留，术语解释会单独成段列出。</p>
       </div>
     </div>
@@ -279,6 +302,7 @@
     <details class="note">
       <summary>想要知交订阅的订阅码？</summary>
       <p>目前处于小范围测试阶段，订阅码由开发者手动发放。如果你是同学或同事，直接找我要即可。</p>
+      <p><a href="#contact">→ 到页面底部加我微信</a></p>
     </details>
   </section>
 
@@ -334,6 +358,27 @@
       </ol>
       <p>提示：扫描版（文字不能选中的）PDF 暂不支持。</p>
     </details>
+  </section>
+
+  <section id="contact">
+    <h2>联系 &amp; 赞助作者</h2>
+    <p class="section-lede">订阅码、使用问题、功能建议，都可以直接找我。这个软件是我一个人利用课余时间做的。</p>
+    <div class="qr-grid">
+      <figure class="qr-card">
+        <img src="contact-wechat.jpg" alt="作者微信二维码" loading="lazy">
+        <figcaption>
+          <strong>加微信</strong>
+          <span>索取订阅码、反馈问题、提功能建议</span>
+        </figcaption>
+      </figure>
+      <figure class="qr-card">
+        <img src="contact-pay.jpg" alt="支付宝赞助二维码" loading="lazy">
+        <figcaption>
+          <strong>请我喝杯咖啡</strong>
+          <span>模型额度是真金白银买的，赞助随意，不赞助也照用</span>
+        </figcaption>
+      </figure>
+    </div>
   </section>
 
   <footer>
