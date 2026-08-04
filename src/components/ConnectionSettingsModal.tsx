@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { IS_WEB_BUILD } from "../lib/appMode";
+import xhsQr from "../assets/xhs-qr.jpg";
 import type { ConnectionSettings } from "../types";
 
 type ConnectionSettingsModalProps = {
@@ -113,19 +114,34 @@ export function ConnectionSettingsModal({
             />
           </label>
           <div className="settings-field settings-field-wide">
-            <p className="settings-section-hint">
-              知交订阅已内置模型（DeepSeek v4-flash）与 API 额度，填入订阅码即可使用，无需自己申请 API key。
-              点下方「测试连接」可查看本月剩余额度。
-            </p>
             {IS_WEB_BUILD ? (
-              <p className="settings-section-hint">
-                想把划线写回 PDF、使用 Obsidian 笔记或自带 API key？
-                <a href="/#download" target="_blank" rel="noreferrer">
-                  下载桌面版
-                </a>
-                。
-              </p>
+              <>
+                {/* Where to actually get a code — the question the old copy
+                    never answered. */}
+                <div className="settings-code-source">
+                  <img src={xhsQr} alt="作者的小红书二维码" />
+                  <p>
+                    还没有订阅码？扫码进我的小红书主页，<strong>置顶动态里有可用的订阅码</strong>。
+                  </p>
+                </div>
+                <p className="settings-section-hint">
+                  内置 DeepSeek v4-flash 与额度，无需自备 API key。点「测试连接」可查本月余额。
+                </p>
+                <p className="settings-section-hint">
+                  需要划线写回 PDF、Obsidian 笔记或自带 API key？
+                  <a href="/#download" target="_blank" rel="noreferrer">
+                    下载桌面版
+                  </a>
+                  。
+                </p>
+              </>
             ) : (
+              <p className="settings-section-hint">
+                知交订阅已内置模型（DeepSeek v4-flash）与 API 额度，填入订阅码即可使用，无需自己申请 API key。
+                点下方「测试连接」可查看本月剩余额度。
+              </p>
+            )}
+            {IS_WEB_BUILD ? null : (
               // The web build always talks to its own origin, so the base URL
               // knob only exists on the desktop (for self-hosters).
               <details className="settings-advanced">
@@ -438,11 +454,16 @@ export function ConnectionSettingsModal({
 
   return (
     <div className="settings-modal-backdrop">
-      <section className="settings-modal" role="dialog" aria-modal="true" aria-label="连接设置">
+      <section
+        className={`settings-modal ${IS_WEB_BUILD ? "is-web" : ""}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="连接设置"
+      >
         <header className="settings-modal-header">
           <div>
-            <p className="panel-kicker">连接</p>
-            <h2>连接设置</h2>
+            {IS_WEB_BUILD ? null : <p className="panel-kicker">连接</p>}
+            <h2>{IS_WEB_BUILD ? "设置" : "连接设置"}</h2>
           </div>
           <button type="button" className="secondary-button" onClick={onClose}>
             关闭
@@ -450,14 +471,7 @@ export function ConnectionSettingsModal({
         </header>
 
         <div className="settings-grid">
-          {IS_WEB_BUILD ? (
-            // The web build is 知交订阅-only (BYOK would need prompts and CORS
-            // in the browser), so the provider picker disappears entirely.
-            <div className="settings-field settings-field-wide">
-              <span>服务提供方</span>
-              <p className="settings-section-hint">知交订阅（网页版内置，无需选择）</p>
-            </div>
-          ) : (
+          {IS_WEB_BUILD ? null : (
             <label className="settings-field settings-field-wide">
               <span>服务提供方</span>
               <select
@@ -489,7 +503,9 @@ export function ConnectionSettingsModal({
           <div className="settings-section-header">
             <p className="panel-kicker">翻译触发</p>
             <p className="settings-section-hint">
-              选择什么动作会让 PDF 选区进入翻译。如果你主要靠右键加入笔记，建议改为"右键菜单"以避免误选触发请求。
+              {IS_WEB_BUILD
+                ? "改成「右键菜单」可以避免手滑选中就发起翻译。"
+                : "选择什么动作会让 PDF 选区进入翻译。如果你主要靠右键加入笔记，建议改为「右键菜单」以避免误选触发请求。"}
             </p>
           </div>
           <label className="settings-field settings-field-wide">
@@ -513,13 +529,15 @@ export function ConnectionSettingsModal({
           </label>
         </div>
 
+        {/* Annotation author is desktop-only: on the web, highlights live for
+            one session and are never written into the PDF, so a name to stamp
+            them with is noise. */}
+        {IS_WEB_BUILD ? null : (
         <div className="settings-grid settings-notes-grid">
           <div className="settings-section-header">
             <p className="panel-kicker">PDF 批注</p>
             <p className="settings-section-hint">
-              {IS_WEB_BUILD
-                ? "在 PDF 里高亮、写评论时使用的作者名，会显示在评论卡片上。注意：网页版的划线与评论仅本次会话有效（刷新后消失），不会写入 PDF 文件；需要长期保存请使用桌面版。"
-                : "在 PDF 里高亮、写评论时使用的作者名，会显示在评论卡片上并写入 PDF 文件（WPS / Adobe 可见）。默认使用电脑用户名。"}
+              在 PDF 里高亮、写评论时使用的作者名，会显示在评论卡片上并写入 PDF 文件（WPS / Adobe 可见）。默认使用电脑用户名。
             </p>
           </div>
           <label className="settings-field settings-field-wide">
@@ -540,6 +558,7 @@ export function ConnectionSettingsModal({
             />
           </label>
         </div>
+        )}
 
         {IS_WEB_BUILD ? null : (
         <div className="settings-grid settings-notes-grid">
@@ -629,7 +648,7 @@ export function ConnectionSettingsModal({
 
         <p className="settings-key-hint">
           {IS_WEB_BUILD
-            ? "订阅码仅保存在当前浏览器（localStorage），不会发给除知交订阅服务器以外的任何一方。使用时选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在你的设备上，不会上传。"
+            ? "订阅码只存在这个浏览器里。翻译时只发送你选中的文字，PDF 文件不会上传。"
             : activeProvider === "cloud"
               ? "订阅码仅保存在本机的用户配置目录。使用知交订阅时，选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在本地。"
               : "API key 与 Obsidian vault 路径仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。"}

@@ -76,12 +76,15 @@
     box-shadow: 0 22px 50px rgba(19, 33, 68, 0.16);
   }
   .showcase figcaption { font-size: 0.84rem; color: var(--muted); margin-top: 10px; }
-  .shot-body h3 { font-family: var(--sans); font-size: 1.18rem; color: var(--navy); margin: 0 0 10px; }
+  .shot-body h3 { font-family: var(--sans); font-size: 1.32rem; color: var(--navy); margin: 0 0 12px; line-height: 1.35; }
   .shot-body p { margin: 0 0 12px; font-size: 0.97rem; color: #3c485e; }
+  /* The section labels were near-invisible grey chips. Now they read as
+     eyebrow headings: larger, letterspaced, navy, with a rule under them. */
   .shot-body .pill {
-    display: inline-block; font-family: var(--sans); font-size: 0.76rem; letter-spacing: 0.04em;
-    color: var(--navy); background: rgba(31, 53, 94, 0.09);
-    padding: 4px 12px; border-radius: 999px; margin-bottom: 12px;
+    display: block; font-family: var(--sans); font-weight: 700;
+    font-size: 0.95rem; letter-spacing: 0.14em;
+    color: var(--navy); margin: 0 0 14px; padding: 0 0 10px;
+    border-bottom: 2px solid rgba(31, 53, 94, 0.16);
   }
 
   /* ── sections ── */
@@ -140,8 +143,13 @@
   /* ── contact / sponsor QR codes ── */
   .qr-grid {
     display: grid; gap: 18px;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 320px));
+    grid-template-columns: repeat(auto-fit, minmax(230px, 300px));
     justify-content: center;
+  }
+  /* The 小红书 card is the route most people will take, so it gets a tint. */
+  .qr-card-primary {
+    background: rgba(255, 246, 246, 0.92);
+    border-color: rgba(220, 96, 96, 0.28);
   }
   .qr-card {
     margin: 0; background: var(--card); border: 1px solid var(--line);
@@ -195,8 +203,8 @@
 
   <div class="hero">
     <h1>左边读 PDF，右边看译文</h1>
-    <p class="lede">专为中文学术阅读做的 AI 文献阅读器。选中一段英文，两秒内看懂它——公式不再变成乱码。</p>
-    <p class="sub">数学公式完整渲染、术语单独解释、同段落连续追问，以及能写回 PDF 文件的划线批注。</p>
+    <p class="lede">为理工科同学做的 AI 文献阅读器。选中一段英文，两秒内看懂——公式不再变成乱码。</p>
+    <p class="sub">数学公式完整渲染、术语单独解释、同段落连续追问，划线批注还能写回 PDF 文件。</p>
     <div class="cta">
       <a class="btn btn-primary" href="/app/">立即在网页里试用</a>
       <a class="btn btn-ghost" href="#download">下载桌面版</a>
@@ -205,8 +213,8 @@
   </div>
 
   <section id="showcase">
-    <h2>它和普通翻译软件差在哪</h2>
-    <p class="section-lede">差别只有一处，但对理工科论文是决定性的：公式。</p>
+    <h2>它和普通翻译软件好在哪</h2>
+    <p class="section-lede">差别只有一处，但对理工科论文是决定性的：<strong>公式</strong>。数学、物理、统计、计算机——只要你的论文里有公式，这一处就够了。</p>
 
     <div class="showcase">
       <figure>
@@ -216,8 +224,8 @@
       <div class="shot-body">
         <span class="pill">公式渲染</span>
         <h3>从 <code>bv = bΩ 1 n P i</code> 到真正的公式</h3>
-        <p>PDF 里的数学符号复制出来就是一堆散字符——帽子掉了、求和号成了字母 P、下标全部散落。通用翻译软件把这堆东西原样丢给你，甚至越翻越乱。</p>
-        <p>知交把它还原成排版正确的公式：上下标、求和号、范数、分式各归其位，连算法的行号和缩进都保留。多层自动修复专门处理模型常犯的错误——漏写定界符、编号写错位置、上标冲突。</p>
+        <p>PDF 里的公式复制出来就是一堆散字符：帽子掉了、求和号变成字母 P、下标全部散落。通用翻译软件原样丢给你，甚至越翻越乱。</p>
+        <p>知交把它还原成排版正确的公式，连算法的行号和缩进都保留。还有多层自动修复，专门兜住模型常犯的公式错误。</p>
       </div>
     </div>
 
@@ -229,62 +237,62 @@
       <div class="shot-body">
         <span class="pill">整段翻译 · 划线</span>
         <h3>整段选中，逐段对照</h3>
-        <p>不用一句句复制。拖选连续几段，译文立刻流式出现在右栏，定理、假设、误差分解一段不落，长公式与矩阵全部保留。</p>
-        <p>看不懂就接着问：每段译文都是一张卡片，可以就这一段继续追问，上下文一直保留，术语解释会单独成段列出。</p>
+        <p>不用一句句复制。拖选连续几段，译文立刻流式出现在右栏，定理、假设、误差分解一段不落。</p>
+        <p>看不懂就接着问。每段译文都是一张卡片，可以就这一段连续追问，上下文一直保留，术语解释单独成段。</p>
       </div>
     </div>
   </section>
 
   <section id="features">
     <h2>完整功能</h2>
-    <p class="section-lede">为长时间读论文这件事打磨的细节。</p>
+    <p class="section-lede">为「一读一下午」这件事打磨的细节。</p>
     <div class="grid">
       <div class="feature">
         <span class="icon">∑</span>
         <h3>公式扛得住真实论文</h3>
-        <p>完整的 Markdown + KaTeX 渲染，并对模型常犯的公式错误做了多层自动修复。这是通用翻译软件全军覆没的地方。</p>
+        <p>完整的 KaTeX 渲染，加上多层自动修复兜住模型常犯的公式错误。通用翻译软件在这里全军覆没。</p>
       </div>
       <div class="feature">
         <span class="icon">✍️</span>
         <h3>划线批注写进 PDF 文件</h3>
-        <p>五色高亮加批注卡片，<code>⌘S</code> 保存后直接写入 PDF 文件本身。用 WPS、Adobe、预览打开同一个文件都看得见；别的软件做的高亮，这里也读得出来。支持撤销 / 重做。</p>
+        <p>五色高亮加批注卡片，<code>⌘S</code> 直接写进 PDF 文件本身。WPS、Adobe、预览打开都看得见，它们做的高亮这里也读得出来。可撤销 / 重做。桌面版功能。</p>
       </div>
       <div class="feature">
         <span class="icon">💬</span>
         <h3>看不懂就接着问</h3>
-        <p>每段译文都是一张卡片，可就这一段连续追问且保留上下文。术语解释单独成段，不和正文混在一起。</p>
+        <p>每段译文都是一张卡片，可就这一段连续追问，上下文一直保留。术语解释单独成段，不和正文混在一起。</p>
       </div>
       <div class="feature">
         <span class="icon">📖</span>
         <h3>为长时间阅读设计</h3>
-        <p>暖纸色背景、衬线正文、字号行距可独立调节并记住。多标签页瞬时切换并记住每篇的阅读位置，卡片可折叠、可复制、可重试。</p>
+        <p>暖纸色背景、衬线正文，字号行距可调并记住。多标签页瞬时切换，每篇停在你上次读到的位置。</p>
       </div>
       <div class="feature">
         <span class="icon">🔒</span>
         <h3>PDF 不上传</h3>
-        <p>PDF 文件始终留在你自己的设备上，只有你选中的那段文字会发出去调用模型。桌面版的 API key 只存本机。</p>
+        <p>PDF 始终留在你的设备上，只有选中的那段文字会发出去调用模型。桌面版的 API key 只存本机。</p>
       </div>
       <div class="feature">
         <span class="icon">🖱️</span>
         <h3>顺手的小事</h3>
-        <p>拖放打开 PDF；划词即译，也可以改成「必须右键才翻译」防误触；全中文界面与错误提示；中途关掉卡片即刻停止计费。</p>
+        <p>拖放打开 PDF；划词即译，也可改成右键触发防误触；全中文界面；中途关掉卡片立刻停止计费。</p>
       </div>
       <div class="feature">
         <span class="icon">📝</span>
         <h3>摘录进你的笔记</h3>
-        <p>右键把原文、或原文加译文追加到本地 markdown 笔记文件夹（Obsidian 兼容），跨设备同步交给你自己的笔记工具。桌面版功能。</p>
+        <p>右键把原文、或原文加译文追加进本地 markdown 笔记夹（Obsidian 兼容）。桌面版功能。</p>
       </div>
       <div class="feature">
         <span class="icon">🔌</span>
         <h3>模型随你换</h3>
-        <p>桌面版可切换 DeepSeek、上海交大 API、OpenAI，或任意 OpenAI 兼容接口，保存前可测试连接。</p>
+        <p>桌面版可切换 DeepSeek、上海交大 API、OpenAI，或任意 OpenAI 兼容接口，保存前能测连接。</p>
       </div>
     </div>
   </section>
 
   <section id="plans">
     <h2>两种使用方式</h2>
-    <p class="section-lede">没有阉割版：阅读功能完全一致，区别只在于模型额度谁来出。</p>
+    <p class="section-lede">没有阉割版。阅读功能完全一致，区别只在于模型额度谁来出。</p>
     <div class="table-scroll">
       <table>
         <thead>
@@ -301,8 +309,8 @@
     </div>
     <details class="note">
       <summary>想要知交订阅的订阅码？</summary>
-      <p>目前处于小范围测试阶段，订阅码由开发者手动发放。如果你是同学或同事，直接找我要即可。</p>
-      <p><a href="#contact">→ 到页面底部加我微信</a></p>
+      <p>扫下方二维码进我的小红书主页，<strong>置顶动态里有可用的订阅码</strong>；也可以直接加微信找我要。</p>
+      <p><a href="#contact">→ 到页面底部扫码</a></p>
     </details>
   </section>
 
@@ -312,7 +320,7 @@
     <div class="dl-grid">
       <div class="dl">
         <h3>网页版 · 免安装</h3>
-        <p>浏览器里直接用，适合先试后装。需要知交订阅的订阅码；划线与批注仅当次会话有效、不写回 PDF 文件。</p>
+        <p>浏览器里直接用，适合先试后装。需要订阅码；划线与批注仅当次会话有效，不写回 PDF 文件。</p>
         <div class="links">
           <a class="file" href="/app/">打开网页版<span>无需下载</span></a>
         </div>
@@ -362,13 +370,20 @@
 
   <section id="contact">
     <h2>联系 &amp; 赞助作者</h2>
-    <p class="section-lede">订阅码、使用问题、功能建议，都可以直接找我。这个软件是我一个人利用课余时间做的。</p>
+    <p class="section-lede">订阅码、使用问题、功能建议，都可以直接找我。</p>
     <div class="qr-grid">
+      <figure class="qr-card qr-card-primary">
+        <img src="contact-xhs.jpg" alt="作者小红书二维码" loading="lazy">
+        <figcaption>
+          <strong>小红书 · 领订阅码</strong>
+          <span>扫码进主页，置顶动态里有可用的订阅码</span>
+        </figcaption>
+      </figure>
       <figure class="qr-card">
         <img src="contact-wechat.jpg" alt="作者微信二维码" loading="lazy">
         <figcaption>
           <strong>加微信</strong>
-          <span>索取订阅码、反馈问题、提功能建议</span>
+          <span>反馈问题、提功能建议，也可以直接问我要码</span>
         </figcaption>
       </figure>
       <figure class="qr-card">

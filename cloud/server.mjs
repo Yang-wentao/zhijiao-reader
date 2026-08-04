@@ -6,7 +6,7 @@ import { loadEnv, CLOUD_DIR } from "./env.mjs";
 import { CloudDb } from "./db.mjs";
 import { buildAskMessages, buildTranslationMessages } from "./prompts.mjs";
 import { streamChat, estimateTokens, DeepSeekError } from "./deepseek.mjs";
-import { RateLimiter } from "./ratelimit.mjs";
+import { AuthThrottle, RateLimiter } from "./ratelimit.mjs";
 import { join } from "node:path";
 
 const MAX_SELECTION_CHARS = 8000;
@@ -37,13 +37,21 @@ export function clientIp(req) {
   return req.ip ?? "";
 }
 
-export function createApp({ db, config, rateLimiter = new RateLimiter() }) {
+export function createApp({
+  db,
+  config,
+  rateLimiter = new RateLimiter(),
+  authThrottle = new AuthThrottle(),
+}) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
 
-  // Keep the limiter's per-code maps from accumulating every code ever seen.
-  // unref() so this timer never holds the process (or a test run) open.
-  setInterval(() => rateLimiter.sweep(), SWEEP_INTERVAL_MS).unref?.();
+  // Keep the limiters' per-key maps from accumulating every code / IP ever
+  // seen. unref() so this timer never holds the process (or a test run) open.
+  setInterval(() => {
+    rateLimiter.sweep();
+    authThrottle.sweep();
+  }, SWEEP_INTERVAL_MS).unref?.();
 
   app.get("/v1/health", (_req, res) => {
     res.json({ ok: true, service: "zhijiao-cloud" });
@@ -75,6 +83,16 @@ export function createApp({ db, config, rateLimiter = new RateLimiter() }) {
       next();
       return;
     }
+    const ip = clientIp(req);
+    // Guessing defence: too many wrong codes from one address and that
+    // address is paused. Wrong codes never reach the per-code limiter, so
+    // without this a hand-picked (low-entropy) code could be brute-forced.
+    if (authThrottle.isBlocked(ip)) {
+      console.log(`[zhijiao-cloud] 订阅码尝试过多，暂时拒绝 来源=${ip}`);
+      res.setHeader("Retry-After", "60");
+      res.status(429).json({ error: "订阅码错误次数过多，请 1 分钟后再试。" });
+      return;
+    }
     const header = req.headers.authorization ?? "";
     const code = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
     if (!code) {
@@ -83,9 +101,11 @@ export function createApp({ db, config, rateLimiter = new RateLimiter() }) {
     }
     const row = db.authenticate(code);
     if (!row) {
+      authThrottle.recordFailure(ip);
       res.status(401).json({ error: "订阅码无效或已停用。" });
       return;
     }
+    authThrottle.recordSuccess(ip);
     req.codeRow = row;
     next();
   });
@@ -208,12 +228,18 @@ function attachAdminRoutes(app, { db, adminToken }) {
 
   app.post("/admin/api/codes", (req, res) => {
     const label = typeof req.body?.label === "string" ? req.body.label.trim() : "";
+    const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
     const quotaTokens = Number(req.body?.quotaTokens);
     if (!Number.isFinite(quotaTokens) || quotaTokens <= 0) {
       res.status(400).json({ error: "额度必须是正数。" });
       return;
     }
-    res.json(db.createCode({ label, quotaTokens }));
+    try {
+      res.json(db.createCode({ label, quotaTokens, code }));
+    } catch (error) {
+      // Bad shape or duplicate — both are the caller's problem, not a fault.
+      res.status(400).json({ error: error.message });
+    }
   });
 
   app.post("/admin/api/codes/:code/active", (req, res) => {

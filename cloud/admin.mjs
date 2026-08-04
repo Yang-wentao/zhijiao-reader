@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 发码 / 管码命令行。在 mini 上 SSH 进来用：
 //   node admin.mjs create --label 张三 --quota 3000000
+//   node admin.mjs create --label 小红书 --code ZJ-MATH-2026   # 自定义好记的码
 //   node admin.mjs list
 //   node admin.mjs disable ZJ-XXXX-XXXX-XXXX
 //   node admin.mjs enable  ZJ-XXXX-XXXX-XXXX
@@ -34,8 +35,20 @@ switch (command) {
   case "create": {
     const label = getFlag(args, "label", "");
     const quota = Number(getFlag(args, "quota", DEFAULT_QUOTA));
-    const row = db.createCode({ label, quotaTokens: quota });
-    console.log("已创建订阅码：\n" + fmt(row));
+    const code = getFlag(args, "code", "");
+    try {
+      const row = db.createCode({ label, quotaTokens: quota, code });
+      console.log("已创建订阅码：\n" + fmt(row));
+      if (code) {
+        console.log(
+          "提示：自定义码好记，但也更容易被猜到。网关已对同一 IP 的连续错误尝试限流，\n" +
+            "      公开发布的码建议配一个较小的额度。",
+        );
+      }
+    } catch (error) {
+      console.error(error.message);
+      process.exit(1);
+    }
     break;
   }
   case "list": {

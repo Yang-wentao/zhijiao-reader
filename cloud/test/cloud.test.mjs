@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { CloudDb } from "../db.mjs";
+import { CloudDb, normalizeCode } from "../db.mjs";
 import { createApp, clientIp } from "../server.mjs";
-import { RateLimiter } from "../ratelimit.mjs";
+import { AuthThrottle, RateLimiter } from "../ratelimit.mjs";
 
 // ── db logic ──────────────────────────────────────────────────────────────
 
@@ -400,5 +400,132 @@ test("migration adds the ip column to a pre-existing usage_log", () => {
   const code = db.createCode({ label: "", quotaTokens: 100 }).code;
   db.recordUsage(code, { kind: "translate", inputTokens: 1, outputTokens: 1, model: "m", ip: "203.0.113.7" });
   assert.equal(db.recentUsage(1)[0].ip, "203.0.113.7");
+  db.close();
+});
+
+// ── custom (memorable) codes ──────────────────────────────────────────────
+
+test("createCode accepts a chosen code and normalizes it", () => {
+  const db = new CloudDb(":memory:");
+  const row = db.createCode({ label: "小红书", quotaTokens: 100, code: " zj-math-2026 " });
+  assert.equal(row.code, "ZJ-MATH-2026");
+  assert.ok(db.authenticate("ZJ-MATH-2026"));
+  // Codes are matched exactly — the client is expected to send it as issued.
+  assert.equal(db.authenticate("zj-math-2026"), null);
+  db.close();
+});
+
+test("createCode rejects bad shapes and duplicates", () => {
+  const db = new CloudDb(":memory:");
+  assert.throws(() => db.createCode({ quotaTokens: 100, code: "AB" }), /格式不对/);
+  assert.throws(() => db.createCode({ quotaTokens: 100, code: "-LEAD" }), /格式不对/);
+  assert.throws(() => db.createCode({ quotaTokens: 100, code: "TRAIL-" }), /格式不对/);
+  assert.throws(() => db.createCode({ quotaTokens: 100, code: "A--B" }), /格式不对/);
+  assert.throws(() => db.createCode({ quotaTokens: 100, code: "ZJ_UNDERSCORE" }), /格式不对/);
+
+  db.createCode({ quotaTokens: 100, code: "ZJ-TAKEN-01" });
+  assert.throws(() => db.createCode({ quotaTokens: 100, code: "zj-taken-01" }), /已存在/);
+  db.close();
+});
+
+test("normalizeCode is exposed for reuse", () => {
+  assert.equal(normalizeCode("  zj-1111-2222  "), "ZJ-1111-2222");
+});
+
+test("admin api mints a custom code and reports bad ones", async () => {
+  const db = new CloudDb(":memory:");
+  const upstream = await startMockUpstream();
+  const server = await startApp(db, upstream.address().port, "secret-token");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const auth = { Authorization: "Bearer secret-token", "Content-Type": "application/json" };
+
+  const created = await (
+    await fetch(`${base}/admin/api/codes`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ label: "小红书", quotaTokens: 500, code: "zj-xhs-2026" }),
+    })
+  ).json();
+  assert.equal(created.code, "ZJ-XHS-2026");
+
+  const bad = await fetch(`${base}/admin/api/codes`, {
+    method: "POST",
+    headers: auth,
+    body: JSON.stringify({ label: "", quotaTokens: 500, code: "??" }),
+  });
+  assert.equal(bad.status, 400);
+  assert.match((await bad.json()).error, /格式不对/);
+
+  server.close();
+  upstream.close();
+  db.close();
+});
+
+// ── wrong-code guessing defence ───────────────────────────────────────────
+
+test("auth throttle blocks an IP after repeated wrong codes", () => {
+  const throttle = new AuthThrottle({ windowMs: 1000, maxFailures: 3 });
+  const ip = "203.0.113.7";
+  assert.equal(throttle.isBlocked(ip, 1000), false);
+  throttle.recordFailure(ip, 1000);
+  throttle.recordFailure(ip, 1100);
+  assert.equal(throttle.isBlocked(ip, 1200), false);
+  throttle.recordFailure(ip, 1200);
+  assert.equal(throttle.isBlocked(ip, 1300), true);
+
+  // Another address is unaffected, and the window eventually slides past.
+  assert.equal(throttle.isBlocked("198.51.100.4", 1300), false);
+  assert.equal(throttle.isBlocked(ip, 2500), false);
+
+  // A correct code clears the record so a fumbling user isn't stuck.
+  throttle.recordFailure(ip, 3000);
+  throttle.recordFailure(ip, 3000);
+  throttle.recordFailure(ip, 3000);
+  assert.equal(throttle.isBlocked(ip, 3000), true);
+  throttle.recordSuccess(ip);
+  assert.equal(throttle.isBlocked(ip, 3000), false);
+});
+
+test("repeated wrong codes over HTTP get 429, valid code still works", async () => {
+  const db = new CloudDb(":memory:");
+  const good = db.createCode({ label: "真用户", quotaTokens: 1000 }).code;
+  const upstream = await startMockUpstream();
+  const throttle = new AuthThrottle({ windowMs: 60_000, maxFailures: 3 });
+  const app = createApp({
+    db,
+    config: {
+      apiKey: "k",
+      model: "m",
+      baseUrl: `http://127.0.0.1:${upstream.address().port}`,
+      thinkingMode: "disabled",
+      adminToken: "",
+    },
+    authThrottle: throttle,
+  });
+  const server = await new Promise((r) => {
+    const s = app.listen(0, "127.0.0.1", () => r(s));
+  });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const attacker = { "CF-Connecting-IP": "203.0.113.9" };
+
+  for (let i = 0; i < 3; i += 1) {
+    const res = await fetch(`${base}/v1/me`, {
+      headers: { Authorization: "Bearer ZJ-GUESS-GUESS", ...attacker },
+    });
+    assert.equal(res.status, 401);
+  }
+  const blocked = await fetch(`${base}/v1/me`, {
+    headers: { Authorization: `Bearer ${good}`, ...attacker },
+  });
+  assert.equal(blocked.status, 429, "blocked IP is refused even with a valid code");
+
+  // A different address is untouched.
+  const other = await fetch(`${base}/v1/me`, {
+    headers: { Authorization: `Bearer ${good}`, "CF-Connecting-IP": "198.51.100.5" },
+  });
+  assert.equal(other.status, 200);
+
+  server.close();
+  upstream.close();
   db.close();
 });

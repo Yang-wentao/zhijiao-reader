@@ -866,6 +866,43 @@ textarea {
   backdrop-filter: blur(4px);
 }
 
+/* The web build's settings screen is one code plus one preference, so the
+   desktop's two-column 760px sheet reads as a mostly-empty box. `.is-web`
+   narrows it to a single column. */
+.settings-modal.is-web {
+  width: min(460px, 100%);
+}
+
+.settings-modal.is-web .settings-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Where to get a code: QR strip on top, one line of instruction under it. */
+.settings-code-source {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(31, 53, 94, 0.05);
+  border: 1px solid rgba(31, 53, 94, 0.1);
+}
+
+.settings-code-source img {
+  width: 100%;
+  max-width: 320px;
+  align-self: center;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.settings-code-source p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #3c485e;
+}
+
 .settings-modal {
   width: min(760px, 100%);
   max-height: min(88vh, 900px);

@@ -22,6 +22,20 @@ export function generateCode() {
   return `ZJ-${randomBlock(4)}-${randomBlock(4)}-${randomBlock(4)}`;
 }
 
+// Hand-picked codes (e.g. ZJ-MATH-2026-7K3P) are allowed so a code can be
+// short enough to read out or put in a post. Normalized to upper case and
+// checked for shape only — deliberately permissive about which characters,
+// since the point of a custom code is that a human chose it.
+export function normalizeCode(input) {
+  const code = String(input ?? "").trim().toUpperCase().replace(/\s+/g, "");
+  if (!/^[A-Z0-9][A-Z0-9-]{3,31}$/.test(code) || code.endsWith("-") || code.includes("--")) {
+    throw new Error(
+      "订阅码格式不对：4–32 位，只能用字母、数字和连字符，且不能以连字符开头或结尾。",
+    );
+  }
+  return code;
+}
+
 function currentPeriod(now = new Date()) {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -66,14 +80,19 @@ export class CloudDb {
     }
   }
 
-  createCode({ label = "", quotaTokens }) {
-    const code = generateCode();
+  // `code` is optional: omit it for a random ZJ-XXXX-XXXX-XXXX, or pass one
+  // to mint a chosen code.
+  createCode({ label = "", quotaTokens, code = "" }) {
+    const finalCode = code ? normalizeCode(code) : generateCode();
+    if (this.getCode(finalCode)) {
+      throw new Error(`订阅码 ${finalCode} 已存在。`);
+    }
     this.db
       .prepare(
         "INSERT INTO codes (code, label, quota_tokens, period, created_at) VALUES (?, ?, ?, ?, ?)",
       )
-      .run(code, label, quotaTokens, currentPeriod(), new Date().toISOString());
-    return this.getCode(code);
+      .run(finalCode, label, quotaTokens, currentPeriod(), new Date().toISOString());
+    return this.getCode(finalCode);
   }
 
   getCode(code) {
