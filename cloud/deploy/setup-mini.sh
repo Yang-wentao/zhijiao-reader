@@ -100,9 +100,24 @@ cat > /Library/LaunchDaemons/com.zhijiao.watchdog.plist << PLIST
 PLIST
 chmod 644 /Library/LaunchDaemons/com.zhijiao.watchdog.plist
 
-for label in com.zhijiao.tunnel com.zhijiao.cloud com.zhijiao.watchdog; do
-  launchctl bootout "system/$label" 2>/dev/null || true
-  launchctl bootstrap system "/Library/LaunchDaemons/$label.plist"
+# 网关先于隧道启动，隧道起来时后端已经在听，不会有几秒的 502 空窗。
+for label in com.zhijiao.cloud com.zhijiao.tunnel com.zhijiao.watchdog; do
+  if launchctl print "system/$label" > /dev/null 2>&1; then
+    launchctl bootout "system/$label" 2>/dev/null || true
+    # bootout 是异步的：它立刻返回，但服务还在卸载。紧接着 bootstrap 会撞上
+    # 这个中间态并报「Bootstrap failed: 5: Input/output error」，而 set -e
+    # 会让整个脚本就此中断——把已经停掉的服务丢在停止状态。所以这里必须等它
+    # 真正消失。
+    for _ in $(seq 1 60); do
+      launchctl print "system/$label" > /dev/null 2>&1 || break
+      sleep 0.25
+    done
+  fi
+  if ! launchctl bootstrap system "/Library/LaunchDaemons/$label.plist" 2>/dev/null; then
+    # 极少数情况下 launchd 仍未释放，再等一拍重试一次。
+    sleep 3
+    launchctl bootstrap system "/Library/LaunchDaemons/$label.plist"
+  fi
   echo "已启动 $label"
 done
 
