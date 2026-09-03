@@ -581,3 +581,74 @@ test("expired code gets a message that says what to do", async () => {
   upstream.close();
   db.close();
 });
+
+// ── admin key: guessing defence ───────────────────────────────────────────
+
+test("admin key survives brute force: throttled per IP after 5 misses", async () => {
+  const db = new CloudDb(":memory:");
+  const upstream = await startMockUpstream();
+  const throttle = new AuthThrottle({ windowMs: 60_000, maxFailures: 5 });
+  const app = createApp({
+    db,
+    config: {
+      apiKey: "k",
+      model: "m",
+      baseUrl: `http://127.0.0.1:${upstream.address().port}`,
+      thinkingMode: "disabled",
+      adminToken: "the-real-admin-token",
+    },
+    adminThrottle: throttle,
+  });
+  const server = await new Promise((r) => {
+    const s = app.listen(0, "127.0.0.1", () => r(s));
+  });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const attacker = { "CF-Connecting-IP": "203.0.113.66" };
+
+  for (let i = 0; i < 5; i += 1) {
+    const res = await fetch(`${base}/admin/api/overview`, {
+      headers: { Authorization: `Bearer guess-${i}`, ...attacker },
+    });
+    assert.equal(res.status, 401);
+  }
+  // Sixth attempt is refused outright — and so is the correct key from that
+  // address, which is the point: the attacker gets no oracle.
+  const blocked = await fetch(`${base}/admin/api/overview`, {
+    headers: { Authorization: "Bearer the-real-admin-token", ...attacker },
+  });
+  assert.equal(blocked.status, 429);
+
+  // The owner, on a different address, is unaffected.
+  const owner = await fetch(`${base}/admin/api/overview`, {
+    headers: { Authorization: "Bearer the-real-admin-token", "CF-Connecting-IP": "198.51.100.8" },
+  });
+  assert.equal(owner.status, 200);
+
+  server.close();
+  upstream.close();
+  db.close();
+});
+
+test("admin key comparison is length-agnostic and exact", async () => {
+  const db = new CloudDb(":memory:");
+  const upstream = await startMockUpstream();
+  const server = await startApp(db, upstream.address().port, "correct-horse-battery");
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  // A prefix of the real token must not pass (hashing both sides means the
+  // compare never short-circuits on length).
+  for (const bad of ["correct", "correct-horse-batteryX", "", "CORRECT-HORSE-BATTERY"]) {
+    const res = await fetch(`${base}/admin/api/overview`, {
+      headers: { Authorization: `Bearer ${bad}`, "CF-Connecting-IP": `198.51.100.${bad.length + 20}` },
+    });
+    assert.equal(res.status, 401, `token "${bad}" must be rejected`);
+  }
+  const ok = await fetch(`${base}/admin/api/overview`, {
+    headers: { Authorization: "Bearer correct-horse-battery", "CF-Connecting-IP": "198.51.100.99" },
+  });
+  assert.equal(ok.status, 200);
+
+  server.close();
+  upstream.close();
+  db.close();
+});

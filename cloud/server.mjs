@@ -8,6 +8,7 @@ import { buildAskMessages, buildTranslationMessages } from "./prompts.mjs";
 import { streamChat, estimateTokens, DeepSeekError } from "./deepseek.mjs";
 import { AuthThrottle, RateLimiter } from "./ratelimit.mjs";
 import { join } from "node:path";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 const MAX_SELECTION_CHARS = 8000;
 const MAX_HISTORY_TURNS = 40;
@@ -37,11 +38,26 @@ export function clientIp(req) {
   return req.ip ?? "";
 }
 
+// Constant-time token comparison. Hashing first gives both sides a fixed
+// length, so timingSafeEqual can never throw on a length mismatch — and the
+// length of the real token isn't leaked by how fast the compare returns.
+function tokenMatches(given, expected) {
+  if (!expected) {
+    return false;
+  }
+  const a = createHash("sha256").update(String(given)).digest();
+  const b = createHash("sha256").update(String(expected)).digest();
+  return timingSafeEqual(a, b);
+}
+
 export function createApp({
   db,
   config,
   rateLimiter = new RateLimiter(),
   authThrottle = new AuthThrottle(),
+  // The admin key guards every code and the whole usage log, so it gets a
+  // tighter budget than a subscriber fumbling their own code.
+  adminThrottle = new AuthThrottle({ maxFailures: 5 }),
 }) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
@@ -51,6 +67,7 @@ export function createApp({
   setInterval(() => {
     rateLimiter.sweep();
     authThrottle.sweep();
+    adminThrottle.sweep();
   }, SWEEP_INTERVAL_MS).unref?.();
 
   app.get("/v1/health", (_req, res) => {
@@ -75,7 +92,7 @@ export function createApp({
   // — /v1 and /admin are matched before this ever runs.
   app.use(express.static(join(CLOUD_DIR, "..", "site"), { extensions: ["html"] }));
 
-  attachAdminRoutes(app, { db, adminToken: config.adminToken });
+  attachAdminRoutes(app, { db, adminToken: config.adminToken, adminThrottle });
 
   // Activation-code auth for everything below.
   app.use("/v1", (req, res, next) => {
@@ -207,7 +224,7 @@ export function createApp({
 // Admin dashboard: /admin serves a single-page console; /admin/api/* requires
 // the ADMIN_TOKEN from cloud/.env. With no token configured the whole area is
 // disabled (403) so a fresh deploy can never be managed anonymously.
-function attachAdminRoutes(app, { db, adminToken }) {
+function attachAdminRoutes(app, { db, adminToken, adminThrottle }) {
   app.get("/admin", (_req, res) => {
     res.sendFile(join(CLOUD_DIR, "public", "admin.html"));
   });
@@ -217,12 +234,24 @@ function attachAdminRoutes(app, { db, adminToken }) {
       res.status(403).json({ error: "管理台未启用：请在 cloud/.env 中设置 ADMIN_TOKEN 后重启。" });
       return;
     }
+    const ip = clientIp(req);
+    // Without this the admin key could be guessed at unlimited speed — it is
+    // the one secret that unlocks every code and the entire usage log.
+    if (adminThrottle.isBlocked(ip)) {
+      console.log(`[zhijiao-cloud] 管理台尝试过多，暂时拒绝 来源=${ip}`);
+      res.setHeader("Retry-After", "60");
+      res.status(429).json({ error: "尝试次数过多，请 1 分钟后再试。" });
+      return;
+    }
     const header = req.headers.authorization ?? "";
     const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-    if (token !== adminToken) {
+    if (!tokenMatches(token, adminToken)) {
+      adminThrottle.recordFailure(ip);
+      console.log(`[zhijiao-cloud] ⚠️ 管理台密钥错误 来源=${ip}`);
       res.status(401).json({ error: "管理密钥不正确。" });
       return;
     }
+    adminThrottle.recordSuccess(ip);
     next();
   });
 
