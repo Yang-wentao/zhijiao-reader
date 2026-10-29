@@ -150,10 +150,11 @@ async function createCode() {
   const label = $("newLabel").value.trim();
   const code = $("newCode").value.trim();
   const quota = Number($("newQuota").value) || 3000000;
+  const expiresInDays = Number($("newDays").value) || 0;
   try {
     const row = await api("/admin/api/codes", {
       method: "POST",
-      body: JSON.stringify({ label, quotaTokens: quota, code }),
+      body: JSON.stringify({ label, quotaTokens: quota, code, expiresInDays }),
     });
     $("createMsg").textContent = `已创建：${row.code}`;
     $("newLabel").value = "";

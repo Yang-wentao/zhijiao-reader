@@ -903,6 +903,46 @@ textarea {
   color: #3c485e;
 }
 
+/* 网页版「今日公开试用码」— sits above the 小红书 box and is the one thing
+   a first-time visitor needs, so it gets the stronger border. */
+.settings-public-code {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(31, 53, 94, 0.07);
+  border: 1.5px solid rgba(31, 53, 94, 0.35);
+}
+
+.settings-public-code p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #3c485e;
+}
+
+.settings-public-code .settings-public-code-title {
+  font-weight: 600;
+  color: #1f355e;
+}
+
+.settings-public-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-public-code-row code {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #1f355e;
+  user-select: all;
+}
+
 .settings-modal {
   width: min(760px, 100%);
   max-height: min(88vh, 900px);

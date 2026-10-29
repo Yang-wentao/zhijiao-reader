@@ -652,3 +652,68 @@ test("admin key comparison is length-agnostic and exact", async () => {
   upstream.close();
   db.close();
 });
+
+// ── public trial codes (web settings screen) ──────────────────────────────
+
+test("pickPublicCode only offers public codes that would work right now", () => {
+  const db = new CloudDb(":memory:");
+  const now = new Date("2026-10-29T08:00:00.000Z");
+  const created = new Date("2026-10-29T07:00:00.000Z");
+  db.createCode({ label: "张三", quotaTokens: 1000, code: "ZJ-PRIVATE", now: created });
+  db.createCode({ label: "公开试用", quotaTokens: 1000, code: "ZJ-PUB-GONE", expiresInDays: 1, now: new Date("2026-10-27T00:00:00.000Z") });
+  db.createCode({ label: "公开试用", quotaTokens: 1000, code: "ZJ-PUB-OFF", expiresInDays: 2, now: created });
+  db.setActive("ZJ-PUB-OFF", false);
+  db.createCode({ label: "公开试用", quotaTokens: 100, code: "ZJ-PUB-DRY", expiresInDays: 2, now: created });
+  db.recordUsage("ZJ-PUB-DRY", { kind: "translate", inputTokens: 60, outputTokens: 40, model: "m" }, now);
+  assert.equal(db.pickPublicCode(now), null);
+
+  db.createCode({ label: "公开试用-1029", quotaTokens: 1000, code: "ZJ-PUB-OK", expiresInDays: 2, now: created });
+  for (const r of [0, 0.5, 0.999]) {
+    assert.equal(db.pickPublicCode(now, () => r).code, "ZJ-PUB-OK");
+  }
+  // Past its deadline the last one drops out too.
+  assert.equal(db.pickPublicCode(new Date("2026-10-31T07:00:01.000Z")), null);
+  db.close();
+});
+
+test("pickPublicCode weights the draw by remaining quota", () => {
+  const db = new CloudDb(":memory:");
+  const now = new Date("2026-10-29T08:00:00.000Z");
+  db.createCode({ label: "公开试用", quotaTokens: 1000, code: "ZJ-PUB-A", expiresInDays: 2, now });
+  db.createCode({ label: "公开试用", quotaTokens: 1000, code: "ZJ-PUB-B", expiresInDays: 2, now });
+  // A has 250 left, B has 1000: A owns the first 20% of the draw.
+  db.recordUsage("ZJ-PUB-A", { kind: "translate", inputTokens: 700, outputTokens: 50, model: "m" }, now);
+  assert.equal(db.pickPublicCode(now, () => 0.19).code, "ZJ-PUB-A");
+  assert.equal(db.pickPublicCode(now, () => 0.21).code, "ZJ-PUB-B");
+
+  // Last month's usage no longer counts against a code.
+  const nextMonth = new Date("2026-11-01T08:00:00.000Z");
+  db.setExpiry("ZJ-PUB-A", 10, now);
+  db.setExpiry("ZJ-PUB-B", 10, now);
+  assert.equal(db.pickPublicCode(nextMonth, () => 0.45).code, "ZJ-PUB-A");
+  db.close();
+});
+
+test("GET /v1/public-code needs no subscription code and hides when empty", async () => {
+  const db = new CloudDb(":memory:");
+  const upstream = await startMockUpstream();
+  const server = await startApp(db, upstream.address().port);
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  let res = await fetch(`${base}/v1/public-code`);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await res.json(), { code: null, expiresAt: null });
+
+  const row = db.createCode({ label: "公开试用", quotaTokens: 1000, code: "ZJ-PUB-1", expiresInDays: 2 });
+  res = await fetch(`${base}/v1/public-code`);
+  assert.deepEqual(await res.json(), { code: "ZJ-PUB-1", expiresAt: row.expires_at });
+
+  // The handed-out code then works like any other.
+  res = await fetch(`${base}/v1/me`, { headers: { Authorization: "Bearer ZJ-PUB-1" } });
+  assert.equal(res.status, 200);
+
+  server.close();
+  upstream.close();
+  db.close();
+});

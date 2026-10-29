@@ -13,6 +13,7 @@
 |---|---|---|
 | GET | `/v1/health` | 健康检查（无需鉴权） |
 | GET | `/v1/me` | 查询本码额度与用量 |
+| GET | `/v1/public-code` | 当前可发放的公开试用码（无需鉴权），网页版设置页展示用；没有时返回 `{code: null}` |
 | POST | `/v1/translate/stream` | 翻译（SSE），`{selectionText, pageNumber}` |
 | POST | `/v1/ask/stream` | 追问（SSE），`{selectionText, pageNumber, question, history}` |
 
@@ -44,6 +45,10 @@ node admin.mjs create --label 张三 --quota 3000000
 
 # 看所有码和用量
 node admin.mjs list
+
+# 发一批公开试用码：备注以「公开试用」开头的码会自动出现在网页版设置页，
+# 访客随机分到其中一个（按剩余额度加权），过期 / 停用 / 用完后自动不再展示
+node admin.mjs create --label 公开试用 --quota 3000000 --days 2
 
 # 某个码的明细 / 停用 / 恢复 / 调额度
 node admin.mjs usage   ZJ-XXXX-XXXX-XXXX

@@ -74,6 +74,15 @@ export function createApp({
     res.json({ ok: true, service: "zhijiao-cloud" });
   });
 
+  // The web settings screen's 公开试用码 box. Unauthenticated on purpose —
+  // these codes are meant to be published; which ones qualify is decided by
+  // CloudDb.pickPublicCode. `code: null` tells the client to hide the box.
+  app.get("/v1/public-code", (_req, res) => {
+    const row = db.pickPublicCode();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ code: row?.code ?? null, expiresAt: row?.expires_at || null });
+  });
+
   // Stable download URLs on our own domain. The landing page links to
   // /download/<target>; only this map knows where the installers actually
   // live, so a new release is a one-line change here instead of an edit in
@@ -96,7 +105,7 @@ export function createApp({
 
   // Activation-code auth for everything below.
   app.use("/v1", (req, res, next) => {
-    if (req.path === "/health") {
+    if (req.path === "/health" || req.path === "/public-code") {
       next();
       return;
     }

@@ -201,6 +201,41 @@ export async function webSaveConnectionSettings(
   return buildWebAppConfig(web, balance);
 }
 
+export type PublicTrialCode = {
+  code: string;
+  expiresAt: string | null;
+};
+
+// The gateway's current 公开试用码 (GET /v1/public-code — no auth). Null when
+// none is on offer or the gateway can't be reached; either way the settings
+// screen simply doesn't show the box.
+export async function webFetchPublicCode(): Promise<PublicTrialCode | null> {
+  try {
+    const response = await fetch("/v1/public-code", { cache: "no-store" });
+    if (!response.ok) {
+      return null;
+    }
+    const body = (await response.json()) as { code?: unknown; expiresAt?: unknown };
+    if (typeof body.code !== "string" || !body.code) {
+      return null;
+    }
+    return {
+      code: body.code,
+      expiresAt: typeof body.expiresAt === "string" && body.expiresAt ? body.expiresAt : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// "10月31日 15:20" in the reader's own time zone.
+export function formatExpiry(iso: string): string {
+  const date = new Date(iso);
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${hh}:${mm}`;
+}
+
 // Same rounding as the server's formatTokenCount (cloud/ and desktop agree).
 export function formatTokenCount(tokens: number): string {
   if (tokens >= 1_000_000) {

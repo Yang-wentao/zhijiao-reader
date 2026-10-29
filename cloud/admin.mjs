@@ -3,6 +3,7 @@
 //   node admin.mjs create --label 张三 --quota 3000000
 //   node admin.mjs create --label 小红书 --code ZJ-MATH-2026   # 自定义好记的码
 //   node admin.mjs create --label 试用 --code ZJ-TRY-2026 --days 7  # 7 天后自动失效
+//   node admin.mjs create --label 公开试用 --days 2   # 备注以「公开试用」开头 = 网页版设置页自动展示
 //   node admin.mjs expire ZJ-TRY-2026 7      # 改有效期（0 = 永不过期）
 //   node admin.mjs list
 //   node admin.mjs disable ZJ-XXXX-XXXX-XXXX

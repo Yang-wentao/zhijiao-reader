@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IS_WEB_BUILD } from "../lib/appMode";
+import { formatExpiry, webFetchPublicCode, type PublicTrialCode } from "../lib/webApi";
 import xhsQr from "../assets/xhs-qr.jpg";
 import type { ConnectionSettings } from "../types";
 
@@ -86,6 +87,25 @@ export function ConnectionSettingsModal({
   onTest,
 }: ConnectionSettingsModalProps) {
   const activeProvider = settings?.activeProvider ?? "cloud";
+
+  // 网页版 only: the gateway may be offering a 公开试用码 right now. Asked
+  // again on every opening so an expired or used-up batch disappears.
+  const [publicCode, setPublicCode] = useState<PublicTrialCode | null>(null);
+  useEffect(() => {
+    if (!IS_WEB_BUILD || !isOpen) {
+      return;
+    }
+    let cancelled = false;
+    void webFetchPublicCode().then((result) => {
+      if (!cancelled) {
+        setPublicCode(result);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
   const currentSection = useMemo(() => {
     if (!settings) {
       return null;
@@ -116,12 +136,43 @@ export function ConnectionSettingsModal({
           <div className="settings-field settings-field-wide">
             {IS_WEB_BUILD ? (
               <>
+                {publicCode ? (
+                  <div className="settings-public-code">
+                    <p className="settings-public-code-title">今日公开试用码</p>
+                    <div className="settings-public-code-row">
+                      <code>{publicCode.code}</code>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={settings.cloud.activationCode === publicCode.code}
+                        onClick={() =>
+                          onChange({
+                            ...settings,
+                            cloud: { ...settings.cloud, activationCode: publicCode.code },
+                          })
+                        }
+                      >
+                        {settings.cloud.activationCode === publicCode.code ? "已填入" : "一键填入"}
+                      </button>
+                    </div>
+                    <p>
+                      {publicCode.expiresAt ? `有效至 ${formatExpiry(publicCode.expiresAt)}，` : ""}
+                      大家共用额度，用完即止。填入后点下方「保存设置」即可开始翻译。
+                    </p>
+                  </div>
+                ) : null}
                 {/* Where to actually get a code — the question the old copy
                     never answered. */}
                 <div className="settings-code-source">
                   <img src={xhsQr} alt="作者的小红书二维码" />
                   <p>
-                    还没有订阅码？扫码进我的小红书主页，<strong>置顶动态里有可用的订阅码</strong>。
+                    {publicCode ? (
+                      <>想长期使用？扫码进我的小红书主页，私信领取长期订阅码。</>
+                    ) : (
+                      <>
+                        还没有订阅码？扫码进我的小红书主页，<strong>置顶动态里有可用的订阅码</strong>。
+                      </>
+                    )}
                   </p>
                 </div>
                 <p className="settings-section-hint">
@@ -446,7 +497,7 @@ export function ConnectionSettingsModal({
         </label>
       </>
     );
-  }, [activeProvider, onChange, settings]);
+  }, [activeProvider, onChange, publicCode, settings]);
 
   if (!isOpen || !settings) {
     return null;

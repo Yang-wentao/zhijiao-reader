@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildWebAppConfig,
   buildWebConnectionSettings,
+  formatExpiry,
   formatTokenCount,
   loadWebSettings,
   saveWebSettings,
   webFetchCloudBalance,
+  webFetchPublicCode,
   webSaveConnectionSettings,
   webTestConnectionSettings,
 } from "./webApi";
@@ -207,5 +209,37 @@ describe("formatTokenCount", () => {
     expect(formatTokenCount(999)).toBe("999");
     expect(formatTokenCount(2_500)).toBe("3K");
     expect(formatTokenCount(2_500_000)).toBe("2.50M");
+  });
+});
+
+describe("public trial code", () => {
+  it("returns the code the gateway offers, asked without a subscription code", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ code: "ZJ-PUB-1", expiresAt: "2026-10-31T07:00:00.000Z" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(webFetchPublicCode()).resolves.toEqual({
+      code: "ZJ-PUB-1",
+      expiresAt: "2026-10-31T07:00:00.000Z",
+    });
+    expect(fetchMock).toHaveBeenCalledWith("/v1/public-code", { cache: "no-store" });
+  });
+
+  it("is null when none is on offer or the gateway is unreachable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ code: null, expiresAt: null }) }),
+    );
+    await expect(webFetchPublicCode()).resolves.toBeNull();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    await expect(webFetchPublicCode()).resolves.toBeNull();
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    await expect(webFetchPublicCode()).resolves.toBeNull();
+  });
+
+  it("formats the deadline in local time", () => {
+    const local = new Date(2026, 9, 31, 9, 5);
+    expect(formatExpiry(local.toISOString())).toBe("10月31日 09:05");
   });
 });

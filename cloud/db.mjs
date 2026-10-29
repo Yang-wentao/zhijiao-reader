@@ -40,6 +40,11 @@ function currentPeriod(now = new Date()) {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// A code whose label starts with this is a public trial code: the web
+// settings screen hands it out to anyone (GET /v1/public-code). Publishing a
+// batch is just `admin.mjs create --label 公开试用 --days 2`, no deploy.
+export const PUBLIC_CODE_LABEL_PREFIX = "公开试用";
+
 export class CloudDb {
   constructor(path) {
     if (path !== ":memory:") {
@@ -165,6 +170,37 @@ export class CloudDb {
 
   hasQuotaRemaining(row) {
     return row.used_tokens < row.quota_tokens;
+  }
+
+  // One public trial code to show on the web settings screen, or null when
+  // none would work right now (all expired, disabled or used up). Picked at
+  // random weighted by remaining quota: each code has its own rate limit, so
+  // a crowd arriving at once is spread across the batch instead of queueing
+  // on one code, and the batch drains evenly.
+  pickPublicCode(now = new Date(), random = Math.random) {
+    const period = currentPeriod(now);
+    const candidates = this.listCodes()
+      .filter((row) => row.active && row.label.startsWith(PUBLIC_CODE_LABEL_PREFIX))
+      .filter((row) => !row.expires_at || new Date(row.expires_at) > now)
+      // A row from an earlier month hasn't been rolled forward yet
+      // (authenticate does that lazily) — its usage no longer counts.
+      .map((row) => ({
+        row,
+        remaining: row.quota_tokens - (row.period === period ? row.used_tokens : 0),
+      }))
+      .filter((candidate) => candidate.remaining > 0);
+    if (candidates.length === 0) {
+      return null;
+    }
+    const total = candidates.reduce((sum, candidate) => sum + candidate.remaining, 0);
+    let ticket = random() * total;
+    for (const candidate of candidates) {
+      ticket -= candidate.remaining;
+      if (ticket < 0) {
+        return candidate.row;
+      }
+    }
+    return candidates.at(-1).row;
   }
 
   recordUsage(code, { kind, inputTokens, outputTokens, model, ip = "" }, now = new Date()) {
