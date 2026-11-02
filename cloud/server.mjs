@@ -18,7 +18,7 @@ const SWEEP_INTERVAL_MS = 5 * 60_000;
 // Desktop installer downloads. `/latest/download/` always resolves to the
 // newest published release, but the file names carry the version — so bump
 // RELEASE_VERSION together with package.json when cutting a release.
-const RELEASE_VERSION = "1.1.2";
+const RELEASE_VERSION = "1.1.3";
 const RELEASE_BASE = "https://github.com/Yang-wentao/zhijiao-reader/releases/latest/download";
 export const DOWNLOADS = {
   "mac-arm64": `ZhijiaoReader-${RELEASE_VERSION}-arm64.dmg`,
