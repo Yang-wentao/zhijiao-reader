@@ -109,7 +109,7 @@ export class CloudDb {
       .prepare(
         "INSERT INTO codes (code, label, quota_tokens, period, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
       )
-      .run(finalCode, label, quotaTokens, currentPeriod(), now.toISOString(), expiresAt);
+      .run(finalCode, label, quotaTokens, currentPeriod(now), now.toISOString(), expiresAt);
     return this.getCode(finalCode);
   }
 
