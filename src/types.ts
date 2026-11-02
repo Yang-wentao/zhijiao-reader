@@ -14,9 +14,21 @@ declare global {
       // backend can write annotations back into the original PDF. Returns
       // null when the path can't be determined.
       getPathForFile?: (file: File) => string | null;
+      // PDFs the OS asked the app to open (「打开方式」/ double-click):
+      // takePendingPdfs drains the ones that arrived before the UI mounted,
+      // onOpenPdf delivers later ones (returns an unsubscribe function).
+      takePendingPdfs?: () => Promise<OpenedPdf[]>;
+      onOpenPdf?: (callback: (pdf: OpenedPdf) => void) => () => void;
     };
   }
 }
+
+export type OpenedPdf = {
+  path: string;
+  name: string;
+  // IPC delivers a plain ArrayBuffer-backed copy of the file's bytes.
+  data: Uint8Array<ArrayBuffer>;
+};
 
 // ── PDF highlight annotations ────────────────────────────────────────────
 // Highlights are written into the PDF file itself as standard `Highlight`

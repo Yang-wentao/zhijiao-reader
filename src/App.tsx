@@ -23,6 +23,7 @@ import type {
   AppConfig,
   CloudBalance,
   ConnectionSettings,
+  OpenedPdf,
   PassageCard,
   PdfContextSelection,
   PdfHighlight,
@@ -149,6 +150,27 @@ export default function App() {
     };
   }, []);
 
+  // Desktop: PDFs opened from the OS（「打开方式」/ double-click）. Drain the
+  // ones that arrived before this mounted, then listen for later ones. A file
+  // that is already open just gets its tab brought to the front.
+  useEffect(() => {
+    const shell = window.desktopShell;
+    if (!shell?.takePendingPdfs || !shell.onOpenPdf) {
+      return;
+    }
+    function openFromShell(pdf: OpenedPdf) {
+      const existing = tabsRef.current.find((tab) => tab.filePath === pdf.path);
+      if (existing) {
+        setActiveTabId(existing.id);
+        return;
+      }
+      handleFileSelected(new File([pdf.data], pdf.name, { type: "application/pdf" }), pdf.path);
+    }
+    const unsubscribe = shell.onOpenPdf(openFromShell);
+    void shell.takePendingPdfs().then((pdfs) => pdfs.forEach(openFromShell));
+    return unsubscribe;
+  }, []);
+
   // Keep the shortcut ref current so the global keyboard listener always
   // runs the latest closures.
   useEffect(() => {
@@ -220,11 +242,12 @@ export default function App() {
     }
   }
 
-  function handleFileSelected(file: File) {
+  function handleFileSelected(file: File, knownPath?: string) {
     // Resolve the real disk path via the Electron bridge so the backend can
     // write highlight annotations back into this PDF. null in a plain
-    // browser — highlights then render in-app but can't be persisted.
-    const filePath = window.desktopShell?.getPathForFile?.(file) ?? null;
+    // browser — highlights then render in-app but can't be persisted. A PDF
+    // handed over by the OS arrives as bytes, so its path comes alongside.
+    const filePath = knownPath ?? window.desktopShell?.getPathForFile?.(file) ?? null;
     const nextTab: PdfTab = {
       id: crypto.randomUUID(),
       fileName: file.name,

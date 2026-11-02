@@ -5,7 +5,7 @@
 // (`.mjs`) preload silently fails to load under the sandbox, which means
 // `window.desktopShell` would never be defined and the renderer could not
 // resolve PDF file paths for writing annotations. Hence: `.cjs` + `require`.
-const { contextBridge, webUtils } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopShell", {
   isElectron: true,
@@ -20,5 +20,15 @@ contextBridge.exposeInMainWorld("desktopShell", {
     } catch {
       return null;
     }
+  },
+  // PDFs the OS asked the app to open (「打开方式」/ double-click). Call
+  // takePendingPdfs once on mount for the ones that arrived before the UI
+  // existed — that call also tells the main process the listener is live —
+  // and onOpenPdf for the ones that arrive later. Each is { path, name, data }.
+  takePendingPdfs: () => ipcRenderer.invoke("zhijiao:take-pending-pdfs"),
+  onOpenPdf: (callback) => {
+    const listener = (_event, pdf) => callback(pdf);
+    ipcRenderer.on("zhijiao:open-pdf", listener);
+    return () => ipcRenderer.removeListener("zhijiao:open-pdf", listener);
   },
 });

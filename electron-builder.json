@@ -16,6 +16,16 @@
   "extraMetadata": {
     "main": "electron/main.mjs"
   },
+  "fileAssociations": [
+    {
+      "ext": "pdf",
+      "name": "PDF Document",
+      "description": "PDF 文档",
+      "mimeType": "application/pdf",
+      "role": "Viewer",
+      "rank": "Alternate"
+    }
+  ],
   "mac": {
     "target": [
       { "target": "dmg", "arch": ["arm64", "x64"] },

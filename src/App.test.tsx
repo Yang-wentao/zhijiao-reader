@@ -2,13 +2,14 @@ import type { ReactNode } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
-import type { PdfTabSummary } from "./types";
+import type { OpenedPdf, PdfTabSummary } from "./types";
 
 const {
   appendNote,
   fetchAppConfig,
   fetchCloudBalance,
   fetchConnectionSettings,
+  fetchHighlights,
   saveConnectionSettings,
   streamTranslation,
   streamAsk,
@@ -21,6 +22,7 @@ const {
   fetchAppConfig: vi.fn(),
   fetchCloudBalance: vi.fn(),
   fetchConnectionSettings: vi.fn(),
+  fetchHighlights: vi.fn(),
   saveConnectionSettings: vi.fn(),
   streamTranslation: vi.fn(),
   streamAsk: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("./lib/api", () => ({
   fetchAppConfig,
   fetchCloudBalance,
   fetchConnectionSettings,
+  fetchHighlights,
   saveConnectionSettings,
   streamTranslation,
   streamAsk,
@@ -234,6 +237,38 @@ describe("App selection flow", () => {
       handlers.onDone();
     });
     streamAsk.mockReset();
+  });
+
+  it("opens PDFs handed over by the OS and refocuses one that is already open", async () => {
+    fetchHighlights.mockResolvedValue([]);
+    let pushPdf: ((pdf: OpenedPdf) => void) | null = null;
+    const paper: OpenedPdf = { path: "/Users/me/paper.pdf", name: "paper.pdf", data: new Uint8Array([37, 80, 68, 70]) };
+    vi.stubGlobal("desktopShell", {
+      isElectron: true,
+      takePendingPdfs: vi.fn().mockResolvedValue([paper]),
+      onOpenPdf: (callback: (pdf: OpenedPdf) => void) => {
+        pushPdf = callback;
+        return () => undefined;
+      },
+    });
+
+    render(<App />);
+    // Arrived before the UI mounted (e.g. the app was launched by 「打开方式」).
+    expect(await screen.findByRole("button", { name: "paper.pdf" })).toHaveAttribute("aria-pressed", "true");
+    // Its real path came along, so existing highlights are read from the file.
+    expect(fetchHighlights).toHaveBeenCalledWith("/Users/me/paper.pdf");
+
+    // Arrives while running.
+    act(() => pushPdf?.({ ...paper, path: "/Users/me/other.pdf", name: "other.pdf" }));
+    expect(await screen.findByRole("button", { name: "other.pdf" })).toHaveAttribute("aria-pressed", "true");
+
+    // Opening the first one again brings its tab back instead of duplicating it.
+    act(() => pushPdf?.(paper));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "paper.pdf" })).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(screen.getAllByRole("button", { name: "paper.pdf" })).toHaveLength(1);
+    vi.stubGlobal("desktopShell", undefined);
   });
 
   it("auto-translates the selection as soon as PdfPane reports a mouseup", async () => {

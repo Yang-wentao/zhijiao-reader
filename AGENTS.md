@@ -193,6 +193,12 @@ electron-builder --config electron-builder.json --publish never
 
 `--publish never` 很重要。不要随便删掉，否则 Git tag 环境下 `electron-builder` 可能再次触发隐式发布并导致 GitHub Actions 失败。
 
+**用知交打开 PDF（「打开方式」/ 双击）**由两部分配合：
+
+- `electron-builder.json` 的 `fileAssociations` 声明 `.pdf`（`role: Viewer`、`rank: Alternate`）。这样知交会出现在「打开方式」菜单里，但不会抢走用户默认的 PDF 阅读器。
+- `electron/main.mjs` 接收系统交过来的文件：macOS 走 `open-file` 事件（app 被这次打开拉起时，事件会在 `ready` 之前就到）；Windows / Linux 走首次启动的 argv，以及第二个实例的 argv（`requestSingleInstanceLock` + `second-instance`，单实例同时避免内置服务端口冲突）。文件路径先进 `pendingPdfPaths` 排队，渲染进程挂载后通过 `desktopShell.takePendingPdfs()` 取走；之后到达的通过 `onOpenPdf` 推送。`App.tsx` 把字节包成 `File`，并带上真实路径交给 `handleFileSelected`，所以划线依然能写回原文件。已经打开的文件只会切回它的标签页。
+- 本机验证要注意：`/Applications` 里装着同一个 appId 的旧版时，macOS 只认那一份，测试版不会出现在「打开方式」里；放在 `/private/tmp` 下的 app 也会被忽略。测试时用 `-c.appId=...` 换一个 appId 打包，并放到 `~/Applications`。
+
 ### 4.4 网页版（web 构建）
 
 同一套前端还有一个浏览器专用构建，部署在 `zhijiao-reader.com/app/`：
