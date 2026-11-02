@@ -383,13 +383,15 @@
     <details class="note" open>
       <summary>⚠️ 桌面版第一次打开会被系统拦下，这是正常的</summary>
       <p>本软件还没有购买苹果和微软的代码签名证书（每年数千元），所以首次启动系统会警告。</p>
-      <p><strong>macOS：</strong>提示「无法打开，因为 Apple 无法检查它是否包含恶意软件」时——</p>
+      <p><strong>macOS：</strong>提示「无法打开」或「Apple 无法验证是否包含恶意软件」时——</p>
       <ol>
-        <li>在「访达」里找到 <code>/应用程序/知交文献阅读.app</code></li>
-        <li><strong>右键</strong> → 点「打开」→ 弹窗里再点「打开」</li>
-        <li>之后双击就能正常启动了</li>
+        <li>先在弹窗里点「完成」</li>
+        <li>打开<strong>「系统设置」→「隐私与安全性」</strong>，往下滑到「安全性」</li>
+        <li>找到提示「知交文献阅读」被阻止的那一行，点<strong>「仍要打开」</strong>，输入开机密码确认</li>
+        <li>如果再弹窗，点「仍要打开」。之后双击就能正常启动了</li>
       </ol>
-      <p>或者在终端里执行一行命令：</p>
+      <p>「仍要打开」按钮只在软件被拦下后的一小时内出现；找不到的话，先双击软件再试一次。</p>
+      <p>或者在终端里执行一行命令，效果相同：</p>
       <pre><code>xattr -dr com.apple.quarantine "/Applications/知交文献阅读.app"</code></pre>
       <p><strong>Windows：</strong>弹出「Windows 已保护你的电脑」时，点「更多信息」→「仍要运行」。</p>
     </details>
