@@ -9,7 +9,7 @@ import {
   streamTranslation,
   syncHighlights,
 } from "./api";
-import { saveWebSettings } from "./webApi";
+import { defaultWebSettings, saveWebSettings } from "./webApi";
 import type { PassageCard } from "../types";
 
 vi.mock("./appMode", () => ({ IS_WEB_BUILD: true }));
@@ -56,6 +56,7 @@ beforeEach(() => {
   vi.stubGlobal("localStorage", createStorageMock());
   readSseStream.mockReset();
   saveWebSettings({
+    ...defaultWebSettings(),
     activationCode: "ZJ-TEST-CODE-0001",
     translationTrigger: "selection",
     annotationAuthor: "",
@@ -98,6 +99,42 @@ describe("api.ts in the web build", () => {
         body: JSON.stringify({ selectionText: "Selected text", pageNumber: 3 }),
       }),
     );
+  });
+
+  it("with a bring-your-own-key provider selected, calls that API directly instead of /v1", async () => {
+    saveWebSettings({
+      ...defaultWebSettings(),
+      activeProvider: "sjtu",
+      sjtu: { apiKey: "sjtu-test", model: "deepseek-chat" },
+    });
+    const encoder = new TextEncoder();
+    const reads = ['data: {"choices":[{"delta":{"content":"译文"}}]}\n\n', "data: [DONE]\n\n"];
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: async () =>
+            reads.length ? { value: encoder.encode(reads.shift()), done: false } : { done: true },
+          cancel: async () => undefined,
+        }),
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const chunks: string[] = [];
+    await streamTranslation(CARD, { onDelta: (chunk) => chunks.push(chunk), onDone: () => undefined });
+
+    expect(chunks).toEqual(["译文"]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://models.sjtu.edu.cn/api/v1/chat/completions");
+    expect(init.headers.Authorization).toBe("Bearer sjtu-test");
+    // The desktop's own translation prompt, with the selected passage.
+    const body = JSON.parse(init.body);
+    expect(body.messages[0].role).toBe("system");
+    expect(body.messages[0].content).toContain("academic translation assistant");
+    expect(body.messages[1].content).toContain("Selected text");
+    expect(readSseStream).not.toHaveBeenCalled();
   });
 
   it("streams follow-up questions from /v1/ask/stream", async () => {

@@ -63,7 +63,7 @@ cd ~/zhijiao-reader/cloud && bash deploy/update.sh
 
 ## 网页版（site/app/）
 
-`site/app/` 是**同一个 React 应用的浏览器构建**（`npm run build:web`，构建产物直接提交进仓库，mini 上零构建）。它直连同源的 `/v1/*`，所以不需要 CORS；只支持知交订阅（订阅码存浏览器 localStorage），划线批注仅会话内有效、不写回 PDF，Obsidian 笔记不可用。
+`site/app/` 是**同一个 React 应用的浏览器构建**（`npm run build:web`，构建产物直接提交进仓库，mini 上零构建）。它直连同源的 `/v1/*`，所以不需要 CORS；支持知交订阅（订阅码存浏览器 localStorage），也可以选 DeepSeek 或交大 SJTU API 并填自己的 key（浏览器直连对方接口，key 不经过网关），划线批注仅会话内有效、不写回 PDF，Obsidian 笔记不可用。
 
 改动前端后要更新网页版：
 

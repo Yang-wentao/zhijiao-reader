@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ConnectionSettingsModal } from "./ConnectionSettingsModal";
-import { buildWebConnectionSettings } from "../lib/webApi";
+import { buildWebConnectionSettings, defaultWebSettings } from "../lib/webApi";
 
 vi.mock("../lib/appMode", () => ({ IS_WEB_BUILD: true }));
 
@@ -14,6 +14,7 @@ afterEach(() => {
 
 function renderModal(activationCode: string, onChange = vi.fn()) {
   const settings = buildWebConnectionSettings({
+    ...defaultWebSettings(),
     activationCode,
     translationTrigger: "selection",
     annotationAuthor: "",
@@ -65,6 +66,39 @@ describe("ConnectionSettingsModal (web) public trial code", () => {
     offerCode(null);
     renderModal("");
     expect(await screen.findByText(/置顶动态里有可用的订阅码/)).toBeInTheDocument();
+    expect(screen.queryByText("今日公开试用码")).not.toBeInTheDocument();
+  });
+});
+
+describe("ConnectionSettingsModal (web) providers", () => {
+  it("offers 知交订阅, DeepSeek and SJTU API, and nothing desktop-only", async () => {
+    offerCode(null);
+    renderModal("");
+    const select = screen.getByRole("combobox", { name: "Connection provider" });
+    const values = Array.from((select as HTMLSelectElement).options).map((option) => option.value);
+    expect(values).toEqual(["cloud", "deepseek", "sjtu"]);
+    await screen.findByText(/置顶动态里有可用的订阅码/);
+  });
+
+  it("shows a key field and no Base URL for a BYOK provider", () => {
+    offerCode("ZJ-PUB-1");
+    const settings = buildWebConnectionSettings({ ...defaultWebSettings(), activeProvider: "deepseek" });
+    render(
+      <ConnectionSettingsModal
+        isOpen
+        settings={settings}
+        isSaving={false}
+        isTesting={false}
+        testResult={null}
+        onClose={vi.fn()}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        onTest={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("API key")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Base URL")).not.toBeInTheDocument();
+    expect(screen.getByText(/不经过知交的服务器/)).toBeInTheDocument();
     expect(screen.queryByText("今日公开试用码")).not.toBeInTheDocument();
   });
 });

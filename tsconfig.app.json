@@ -24,6 +24,8 @@
     ]
   },
   "include": [
-    "src"
+    "src",
+    "server/prompts.ts",
+    "server/providers/types.ts"
   ]
 }

@@ -212,8 +212,9 @@ npm run build:web   # 产出 site/app/（base=/app/，emptyOutDir 会先清空�
 
 - 开关是 `src/lib/appMode.ts` 的 `IS_WEB_BUILD`（`import.meta.env.MODE === "web"`）。所有分支都从这里走，不要另造判定。
 - web 模式下没有本地 Express：`src/lib/api.ts` 每个函数开头分支到 `src/lib/webApi.ts`——设置存 localStorage（key `zhijiao-web-settings`），翻译/追问/额度直连**同源** `/v1/*`（`Authorization: Bearer 订阅码`）。同源是关键：网关同一进程伺服 `/app/` 和 `/v1`，因此**不需要 CORS**，不要给 `cloud/server.mjs` 加 CORS 头。
-- 只支持知交订阅。BYOK 需要把 prompt 搬进前端（第四份拷贝）+ 任意域 CORS，明确不做。
-- 降级：划线批注仅会话内有效（不写回 PDF）、无 Obsidian 笔记（`notesReady` 恒 false）、设置弹窗隐藏 BYOK/Obsidian/服务地址（`ConnectionSettingsModal.tsx` 里的 `IS_WEB_BUILD` 分支）。
+- 服务提供方：知交订阅（默认）+ 两个自带 key 的 BYOK：DeepSeek、交大 SJTU API（2026-11 起）。BYOK 由**浏览器直连**对方接口（`src/lib/byok.ts`）：两家都放行跨域请求（DeepSeek 回显来源域名，SJTU 为 `*`），key 只存在用户浏览器的 localStorage 里，不经过网关。提示词**直接 import `server/prompts.ts`**（`tsconfig.app.json` 的 include 里加了它和 `server/providers/types.ts`），不是第四份拷贝；改桌面版提示词，网页 BYOK 会同步生效。接口地址固定在 `BYOK_BASE_URLS`，设置里不显示 Base URL。DeepSeek 默认发送 `thinking: disabled`，因为 v4 模型默认会思考，又慢又贵。
+- 只做这两家，是因为跨域放行已经核实过；OpenAI、Custom、Codex 仍只在桌面版。
+- 降级：划线批注仅会话内有效（不写回 PDF）、无 Obsidian 笔记（`notesReady` 恒 false）、设置弹窗隐藏 Obsidian / 服务地址和桌面独有的服务提供方（`ConnectionSettingsModal.tsx` 里的 `IS_WEB_BUILD` 分支）。
 - **`site/app/` 的构建产物是提交进仓库的**（mini 零构建，git pull 即部署）。改前端后若要更新网页版：`npm run build:web` + 提交 `site/app/` + mini 上 `bash deploy/update.sh`。
 - **公开试用码**：设置弹窗（仅 web）每次打开时请求 `GET /v1/public-code`（无需鉴权），有码就在订阅码输入框下方显示「今日公开试用码 + 一键填入」。哪些码算公开码由网关决定：备注以 `公开试用` 开头（`cloud/db.mjs` 的 `PUBLIC_CODE_LABEL_PREFIX`）、启用中、未过期、本月还有额度；多个可用时按剩余额度加权随机发一个，把同时涌入的人分散到不同码上（每个码各自限流）。所以发一批公开码只需在 mini 上 `admin.mjs create --label 公开试用 --days N`，**不用改前端、不用部署**。
 - 测试：`src/lib/webApi.test.ts`（web 实现）、`src/lib/api.web.test.ts`（mock `IS_WEB_BUILD=true` 验证分支走向）、`src/components/ConnectionSettingsModal.web.test.tsx`（公开试用码框）。

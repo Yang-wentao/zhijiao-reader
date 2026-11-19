@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildWebAppConfig,
   buildWebConnectionSettings,
+  defaultWebSettings,
   formatExpiry,
   formatTokenCount,
   loadWebSettings,
@@ -50,6 +51,7 @@ afterEach(() => {
 describe("web settings storage", () => {
   it("returns defaults on a fresh visit", () => {
     expect(loadWebSettings()).toEqual({
+      ...defaultWebSettings(),
       activationCode: "",
       translationTrigger: "selection",
       annotationAuthor: "",
@@ -58,11 +60,13 @@ describe("web settings storage", () => {
 
   it("round-trips saved settings", () => {
     saveWebSettings({
+      ...defaultWebSettings(),
       activationCode: "ZJ-TEST-CODE-0001",
       translationTrigger: "menu",
       annotationAuthor: "阿远",
     });
     expect(loadWebSettings()).toEqual({
+      ...defaultWebSettings(),
       activationCode: "ZJ-TEST-CODE-0001",
       translationTrigger: "menu",
       annotationAuthor: "阿远",
@@ -72,6 +76,7 @@ describe("web settings storage", () => {
   it("falls back to defaults when stored JSON is corrupted", () => {
     localStorage.setItem("zhijiao-web-settings", "{not json");
     expect(loadWebSettings()).toEqual({
+      ...defaultWebSettings(),
       activationCode: "",
       translationTrigger: "selection",
       annotationAuthor: "",
@@ -79,10 +84,53 @@ describe("web settings storage", () => {
   });
 });
 
+describe("bring-your-own-key providers", () => {
+  it("loads settings saved before providers existed as 知交订阅, code intact", () => {
+    localStorage.setItem(
+      "zhijiao-web-settings",
+      JSON.stringify({ activationCode: "ZJ-OLD", translationTrigger: "menu", annotationAuthor: "" }),
+    );
+    const web = loadWebSettings();
+    expect(web.activeProvider).toBe("cloud");
+    expect(web.activationCode).toBe("ZJ-OLD");
+    expect(web.deepseek).toEqual({ apiKey: "", model: "deepseek-v4-flash", thinkingMode: "disabled" });
+  });
+
+  it("is ready only once the selected provider has a key", () => {
+    const base = { ...defaultWebSettings(), activeProvider: "deepseek" as const };
+    expect(buildWebAppConfig(base, null).setupRequired).toBe(true);
+    const config = buildWebAppConfig(
+      { ...base, deepseek: { ...base.deepseek, apiKey: "sk-test" } },
+      null,
+    );
+    expect(config.isReady).toBe(true);
+    expect(config.provider).toBe("deepseek");
+    expect(config.connectionLabel).toBe("DeepSeek · deepseek-v4-flash");
+  });
+
+  it("tests and saves a BYOK provider without touching the gateway", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    const settings = buildWebConnectionSettings(defaultWebSettings());
+    settings.activeProvider = "sjtu";
+    settings.sjtu.apiKey = " sjtu-test ";
+
+    const test = await webTestConnectionSettings(settings);
+    expect(test.ok).toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://models.sjtu.edu.cn/api/v1/chat/completions");
+
+    fetchMock.mockClear();
+    const config = await webSaveConnectionSettings(settings);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(loadWebSettings().sjtu.apiKey).toBe("sjtu-test");
+    expect(config.connectionLabel).toBe("SJTU API · deepseek-chat");
+  });
+});
+
 describe("buildWebAppConfig", () => {
   it("requires setup when no activation code is stored", () => {
     const config = buildWebAppConfig(
-      { activationCode: "", translationTrigger: "selection", annotationAuthor: "" },
+      { ...defaultWebSettings(), activationCode: "", translationTrigger: "selection", annotationAuthor: "" },
       null,
     );
     expect(config.setupRequired).toBe(true);
@@ -95,6 +143,7 @@ describe("buildWebAppConfig", () => {
   it("uses the gateway-reported model in the label once known", () => {
     const config = buildWebAppConfig(
       {
+        ...defaultWebSettings(),
         activationCode: "ZJ-TEST-CODE-0001",
         translationTrigger: "menu",
         annotationAuthor: "阿远",
@@ -141,6 +190,7 @@ describe("webFetchCloudBalance", () => {
 describe("webTestConnectionSettings", () => {
   function settingsWithCode(code: string) {
     return buildWebConnectionSettings({
+      ...defaultWebSettings(),
       activationCode: code,
       translationTrigger: "selection",
       annotationAuthor: "",
@@ -184,6 +234,7 @@ describe("webSaveConnectionSettings", () => {
       vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_BALANCE }),
     );
     const settings = buildWebConnectionSettings({
+      ...defaultWebSettings(),
       activationCode: "",
       translationTrigger: "selection",
       annotationAuthor: "",
@@ -195,6 +246,7 @@ describe("webSaveConnectionSettings", () => {
     const config = await webSaveConnectionSettings(settings);
 
     expect(loadWebSettings()).toEqual({
+      ...defaultWebSettings(),
       activationCode: "ZJ-TEST-CODE-0001",
       translationTrigger: "menu",
       annotationAuthor: "阿远",

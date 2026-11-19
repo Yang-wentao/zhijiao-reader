@@ -5,9 +5,15 @@
 // involved. In dev (`npm run dev:web`) Vite proxies /v1 to the production
 // gateway instead.
 //
-// Only the cloud provider exists on the web: BYOK providers would need the
-// prompts client-side (a fourth synced copy) and CORS to arbitrary hosts, so
-// they stay desktop-only.
+// Besides 知交订阅 (the default), the web offers two bring-your-own-key
+// providers — DeepSeek and 交大 SJTU API — that the browser calls directly
+// (see byok.ts). The other desktop providers stay desktop-only.
+import {
+  BYOK_BASE_URLS,
+  testByokConnection,
+  type ByokProvider,
+  type ByokTarget,
+} from "./byok";
 import type {
   AppConfig,
   CloudBalance,
@@ -20,29 +26,62 @@ const WEB_SETTINGS_STORAGE_KEY = "zhijiao-web-settings";
 // Fallback shown before the gateway has reported its real model (/v1/me).
 export const WEB_DEFAULT_MODEL = "deepseek-v4-flash";
 
+export type WebProvider = "cloud" | ByokProvider;
+
 // The subset of ConnectionSettings the web build actually persists.
 export type WebSettings = {
+  activeProvider: WebProvider;
   activationCode: string;
+  deepseek: { apiKey: string; model: string; thinkingMode: "enabled" | "disabled" };
+  sjtu: { apiKey: string; model: string };
   translationTrigger: "selection" | "menu";
   annotationAuthor: string;
 };
 
-const DEFAULT_WEB_SETTINGS: WebSettings = {
-  activationCode: "",
-  translationTrigger: "selection",
-  annotationAuthor: "",
-};
+export function defaultWebSettings(): WebSettings {
+  return {
+    activeProvider: "cloud",
+    activationCode: "",
+    deepseek: { apiKey: "", model: "deepseek-v4-flash", thinkingMode: "disabled" },
+    sjtu: { apiKey: "", model: "deepseek-chat" },
+    translationTrigger: "selection",
+    annotationAuthor: "",
+  };
+}
+
+function isWebProvider(value: unknown): value is WebProvider {
+  return value === "cloud" || value === "deepseek" || value === "sjtu";
+}
+
+function stringOr(value: unknown, fallback: string): string {
+  return typeof value === "string" && value ? value : fallback;
+}
 
 export function loadWebSettings(): WebSettings {
   try {
+    const defaults = defaultWebSettings();
     const raw = window.localStorage.getItem(WEB_SETTINGS_STORAGE_KEY);
     if (!raw) {
-      return { ...DEFAULT_WEB_SETTINGS };
+      return defaults;
     }
+    // Settings saved before the BYOK providers existed have no provider
+    // fields at all; they load as 知交订阅 with their code intact.
     const parsed = JSON.parse(raw) as Partial<WebSettings>;
+    const deepseek: Partial<WebSettings["deepseek"]> = parsed.deepseek ?? {};
+    const sjtu: Partial<WebSettings["sjtu"]> = parsed.sjtu ?? {};
     return {
+      activeProvider: isWebProvider(parsed.activeProvider) ? parsed.activeProvider : "cloud",
       activationCode:
         typeof parsed.activationCode === "string" ? parsed.activationCode : "",
+      deepseek: {
+        apiKey: stringOr(deepseek.apiKey, ""),
+        model: stringOr(deepseek.model, defaults.deepseek.model),
+        thinkingMode: deepseek.thinkingMode === "enabled" ? "enabled" : "disabled",
+      },
+      sjtu: {
+        apiKey: stringOr(sjtu.apiKey, ""),
+        model: stringOr(sjtu.model, defaults.sjtu.model),
+      },
       translationTrigger:
         parsed.translationTrigger === "menu" ? "menu" : "selection",
       annotationAuthor:
@@ -50,7 +89,7 @@ export function loadWebSettings(): WebSettings {
     };
   } catch {
     // Private mode / corrupted JSON — behave like a fresh visit.
-    return { ...DEFAULT_WEB_SETTINGS };
+    return defaultWebSettings();
   }
 }
 
@@ -63,22 +102,28 @@ export function saveWebSettings(settings: WebSettings): void {
   }
 }
 
+// The BYOK provider the reader has selected, or null for 知交订阅.
+export function webByokTarget(web: WebSettings): ByokTarget | null {
+  if (web.activeProvider === "deepseek") {
+    return { provider: "deepseek", ...web.deepseek };
+  }
+  if (web.activeProvider === "sjtu") {
+    return { provider: "sjtu", ...web.sjtu };
+  }
+  return null;
+}
+
 // Expand the persisted subset into a full ConnectionSettings so the existing
 // settings modal (a controlled component over the whole object) works
-// unchanged. The BYOK sections are never shown on the web; their values are
-// inert placeholders.
+// unchanged. The codex / openai / custom sections are never shown on the web;
+// their values are inert placeholders.
 export function buildWebConnectionSettings(web: WebSettings): ConnectionSettings {
   return {
-    activeProvider: "cloud",
+    activeProvider: web.activeProvider,
     cloud: { activationCode: web.activationCode, baseUrl: "" },
     codex: { bin: "codex", model: "gpt-5.4-mini", reasoningEffort: "low" },
-    deepseek: {
-      apiKey: "",
-      model: "deepseek-v4-flash",
-      baseUrl: "https://api.deepseek.com",
-      thinkingMode: "disabled",
-    },
-    sjtu: { apiKey: "", model: "deepseek-chat", baseUrl: "" },
+    deepseek: { ...web.deepseek, baseUrl: BYOK_BASE_URLS.deepseek },
+    sjtu: { ...web.sjtu, baseUrl: BYOK_BASE_URLS.sjtu },
     openai: {
       apiKey: "",
       model: "gpt-5.4",
@@ -99,13 +144,15 @@ export function buildWebAppConfig(
   web: WebSettings,
   balance: CloudBalance | null,
 ): AppConfig {
-  const hasCode = web.activationCode.trim().length > 0;
-  const model = balance?.model || WEB_DEFAULT_MODEL;
+  const byok = webByokTarget(web);
+  const hasCode = (byok ? byok.apiKey : web.activationCode).trim().length > 0;
+  const model = byok ? byok.model : balance?.model || WEB_DEFAULT_MODEL;
+  const providerName = byok ? (byok.provider === "deepseek" ? "DeepSeek" : "SJTU API") : "知交订阅";
   return {
     hasApiKey: hasCode,
     isReady: hasCode,
-    provider: "cloud",
-    providerOptions: ["cloud"],
+    provider: web.activeProvider,
+    providerOptions: ["cloud", "deepseek", "sjtu"],
     canSwitchProviders: false,
     model,
     modelOptions: [model],
@@ -116,7 +163,7 @@ export function buildWebAppConfig(
     questionActionLabel: "Ask ZhiJiao",
     maxSelectionChars: 8000,
     setupRequired: !hasCode,
-    connectionLabel: `知交订阅 · ${model}`,
+    connectionLabel: `${providerName} · ${model}`,
     notesReady: false,
     translationTrigger: web.translationTrigger,
     annotationAuthor: web.annotationAuthor,
@@ -149,7 +196,8 @@ export async function webFetchCloudBalance(
 
 export async function webFetchAppConfig(): Promise<AppConfig> {
   const web = loadWebSettings();
-  const balance = await webFetchCloudBalance(web.activationCode);
+  const balance =
+    web.activeProvider === "cloud" ? await webFetchCloudBalance(web.activationCode) : null;
   return buildWebAppConfig(web, balance);
 }
 
@@ -163,6 +211,10 @@ export async function webFetchConnectionSettings(): Promise<ConnectionSettings> 
 export async function webTestConnectionSettings(
   settings: ConnectionSettings,
 ): Promise<ConnectionTestResult> {
+  const byok = webByokTarget(webSettingsFrom(settings));
+  if (byok) {
+    return testByokConnection(byok);
+  }
   const code = settings.cloud.activationCode.trim();
   if (!code) {
     return { ok: false, message: "请填写订阅码。" };
@@ -188,16 +240,29 @@ export async function webTestConnectionSettings(
   }
 }
 
-export async function webSaveConnectionSettings(
-  settings: ConnectionSettings,
-): Promise<AppConfig> {
-  const web: WebSettings = {
+// The modal edits a full ConnectionSettings; keep only what the web uses.
+function webSettingsFrom(settings: ConnectionSettings): WebSettings {
+  return {
+    activeProvider: isWebProvider(settings.activeProvider) ? settings.activeProvider : "cloud",
     activationCode: settings.cloud.activationCode.trim(),
+    deepseek: {
+      apiKey: settings.deepseek.apiKey.trim(),
+      model: settings.deepseek.model,
+      thinkingMode: settings.deepseek.thinkingMode === "enabled" ? "enabled" : "disabled",
+    },
+    sjtu: { apiKey: settings.sjtu.apiKey.trim(), model: settings.sjtu.model },
     translationTrigger: settings.preferences.translationTrigger,
     annotationAuthor: settings.annotations?.author ?? "",
   };
+}
+
+export async function webSaveConnectionSettings(
+  settings: ConnectionSettings,
+): Promise<AppConfig> {
+  const web = webSettingsFrom(settings);
   saveWebSettings(web);
-  const balance = await webFetchCloudBalance(web.activationCode);
+  const balance =
+    web.activeProvider === "cloud" ? await webFetchCloudBalance(web.activationCode) : null;
   return buildWebAppConfig(web, balance);
 }
 

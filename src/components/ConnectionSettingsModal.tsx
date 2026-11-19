@@ -38,6 +38,22 @@ const PROVIDER_GROUPS = [
   },
 ] as const;
 
+// 网页版 offers the subscription plus the two bring-your-own-key providers
+// whose APIs a browser can call directly (see lib/byok.ts).
+const WEB_PROVIDER_GROUPS = [
+  {
+    label: "订阅版",
+    options: [{ value: "cloud", label: "知交订阅（推荐 · 无需申请 API）" }],
+  },
+  {
+    label: "自带 API key（免费）",
+    options: [
+      { value: "deepseek", label: "DeepSeek" },
+      { value: "sjtu", label: "SJTU API（交大）" },
+    ],
+  },
+] as const;
+
 const CODEX_MODEL_OPTIONS = ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"] as const;
 const DEEPSEEK_MODEL_OPTIONS = [
   { value: "deepseek-v4-flash", label: "v4-flash（推荐 · 1M 上下文）" },
@@ -311,23 +327,26 @@ export function ConnectionSettingsModal({
             />
           </label>
         ) : null}
-        <label className={`settings-field ${activeProvider === "custom" ? "" : "settings-field-wide"}`.trim()}>
-          <span>Base URL</span>
-          <input
-            aria-label="Base URL"
-            value={target.baseUrl}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              onChange({
-                ...settings,
-                [activeProvider]: {
-                  ...target,
-                  baseUrl: nextValue,
-                },
-              });
-            }}
-          />
-        </label>
+        {IS_WEB_BUILD ? null : (
+          // The web build calls fixed, CORS-checked endpoints (lib/byok.ts).
+          <label className={`settings-field ${activeProvider === "custom" ? "" : "settings-field-wide"}`.trim()}>
+            <span>Base URL</span>
+            <input
+              aria-label="Base URL"
+              value={target.baseUrl}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                onChange({
+                  ...settings,
+                  [activeProvider]: {
+                    ...target,
+                    baseUrl: nextValue,
+                  },
+                });
+              }}
+            />
+          </label>
+        )}
         {activeProvider === "deepseek" ? (
           <>
             <label className="settings-field">
@@ -495,6 +514,15 @@ export function ConnectionSettingsModal({
             }}
           />
         </label>
+        {IS_WEB_BUILD ? (
+          <div className="settings-field settings-field-wide">
+            <p className="settings-section-hint">
+              key 只保存在这个浏览器里。翻译请求由浏览器直接发给
+              {activeProvider === "sjtu" ? "交大 SJTU API" : " DeepSeek"}
+              ，不经过知交的服务器，用的是你自己账户的额度。
+            </p>
+          </div>
+        ) : null}
       </>
     );
   }, [activeProvider, onChange, publicCode, settings]);
@@ -522,31 +550,29 @@ export function ConnectionSettingsModal({
         </header>
 
         <div className="settings-grid">
-          {IS_WEB_BUILD ? null : (
-            <label className="settings-field settings-field-wide">
-              <span>服务提供方</span>
-              <select
-                aria-label="Connection provider"
-                value={settings.activeProvider}
-                onChange={(event) =>
-                  onChange({
-                    ...settings,
-                    activeProvider: event.target.value as ConnectionSettings["activeProvider"],
-                  })
-                }
-              >
-                {PROVIDER_GROUPS.map((group) => (
-                  <optgroup key={group.label} label={group.label}>
-                    {group.options.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
-          )}
+          <label className="settings-field settings-field-wide">
+            <span>服务提供方</span>
+            <select
+              aria-label="Connection provider"
+              value={settings.activeProvider}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  activeProvider: event.target.value as ConnectionSettings["activeProvider"],
+                })
+              }
+            >
+              {(IS_WEB_BUILD ? WEB_PROVIDER_GROUPS : PROVIDER_GROUPS).map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
           {currentSection}
         </div>
 
@@ -699,7 +725,9 @@ export function ConnectionSettingsModal({
 
         <p className="settings-key-hint">
           {IS_WEB_BUILD
-            ? "订阅码只存在这个浏览器里。翻译时只发送你选中的文字，PDF 文件不会上传。"
+            ? activeProvider === "cloud"
+              ? "订阅码只存在这个浏览器里。翻译时只发送你选中的文字，PDF 文件不会上传。"
+              : "API key 只存在这个浏览器里。翻译时只把你选中的文字直接发给模型服务商，PDF 文件不会上传。"
             : activeProvider === "cloud"
               ? "订阅码仅保存在本机的用户配置目录。使用知交订阅时，选中的段落会发送到知交订阅服务器以调用模型；PDF 文件本身始终留在本地。"
               : "API key 与 Obsidian vault 路径仅保存在本机的用户配置目录，不会随项目同步、不会上传到任何服务器。"}

@@ -1,7 +1,10 @@
 import { IS_WEB_BUILD } from "./appMode";
 import { readSseStream } from "./sse";
+import { streamByokAsk, streamByokTranslation } from "./byok";
 import {
+  loadWebSettings,
   webAuthHeaders,
+  webByokTarget,
   webFetchAppConfig,
   webFetchCloudBalance,
   webFetchConnectionSettings,
@@ -241,8 +244,13 @@ export async function streamTranslation(
     pageNumber: card.pageNumber,
   };
   // The gateway speaks the same SSE protocol and payload shape as the local
-  // server, so the web build only swaps the endpoint and adds the code.
+  // server, so the web build only swaps the endpoint and adds the code — or,
+  // with a bring-your-own-key provider selected, calls that API directly.
   if (IS_WEB_BUILD) {
+    const byok = webByokTarget(loadWebSettings());
+    if (byok) {
+      return streamByokTranslation(byok, card.selectionText, card.pageNumber, handlers);
+    }
     return streamRequest("/v1/translate/stream", payload, handlers, webAuthHeaders());
   }
   return streamRequest("/api/translate/stream", payload, handlers);
@@ -261,6 +269,10 @@ export async function streamAsk(
     history,
   };
   if (IS_WEB_BUILD) {
+    const byok = webByokTarget(loadWebSettings());
+    if (byok) {
+      return streamByokAsk(byok, card.selectionText, card.pageNumber, question, history, handlers);
+    }
     return streamRequest("/v1/ask/stream", payload, handlers, webAuthHeaders());
   }
   return streamRequest("/api/ask/stream", payload, handlers);
