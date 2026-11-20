@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { formatTiming } from "../state/cards";
 import type { PassageCard } from "../types";
 
 type PassageCardProps = {
@@ -156,6 +157,7 @@ export function PassageCard({
               <div key={message.id} className={`message-bubble message-${message.role}`}>
                 <span className="message-role">{message.role === "user" ? "你的提问" : assistantLabel}</span>
                 <div className="message-content">{renderRichContent(message.content)}</div>
+                {message.timing ? <p className="message-timing">{formatTiming(message.timing)}</p> : null}
               </div>
             ))}
             {card.status === "streaming" || card.status === "loading" ? (

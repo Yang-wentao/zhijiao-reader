@@ -18,7 +18,13 @@ import {
   syncHighlights,
   testConnectionSettings,
 } from "./lib/api";
-import { cardsReducer, createCard, getCardHistory, validateSelection } from "./state/cards";
+import {
+  cardsReducer,
+  createCard,
+  getCardHistory,
+  startRequestTimer,
+  validateSelection,
+} from "./state/cards";
 import type {
   AppConfig,
   CloudBalance,
@@ -333,15 +339,23 @@ export default function App() {
     dispatchForSourceTab({ type: "start_request", cardId: card.id });
     let result = "";
     let queue = Promise.resolve();
+    const timer = startRequestTimer();
     try {
       await streamTranslation(card, {
         onDelta: (chunk) => {
+          timer.markChunk();
           result += chunk;
           queue = queue.then(() => appendChunkWithCadence(dispatchForSourceTab, card.id, chunk));
         },
         onDone: () => {
+          const timing = timer.finish();
           void queue.then(() => {
-            dispatchForSourceTab({ type: "finish_request", cardId: card.id, assistantMessage: result.trim() });
+            dispatchForSourceTab({
+              type: "finish_request",
+              cardId: card.id,
+              assistantMessage: result.trim(),
+              timing,
+            });
           });
         },
       });
@@ -376,15 +390,18 @@ export default function App() {
     dispatchForSourceTab({ type: "start_request", cardId, userMessage: question, mode: "ask" });
     let result = "";
     let queue = Promise.resolve();
+    const timer = startRequestTimer();
     try {
       await streamAsk(card, question, getCardHistory(card), {
         onDelta: (chunk) => {
+          timer.markChunk();
           result += chunk;
           queue = queue.then(() => appendChunkWithCadence(dispatchForSourceTab, cardId, chunk));
         },
         onDone: () => {
+          const timing = timer.finish();
           void queue.then(() => {
-            dispatchForSourceTab({ type: "finish_request", cardId, assistantMessage: result.trim() });
+            dispatchForSourceTab({ type: "finish_request", cardId, assistantMessage: result.trim(), timing });
           });
         },
       });

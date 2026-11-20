@@ -70,10 +70,18 @@ export type PdfHighlight = {
   managed: boolean;
 };
 
+// How long one answer took, measured when the data arrived from the network
+// (before the UI's typing cadence), so different providers compare fairly.
+export type MessageTiming = {
+  firstTokenMs: number | null;
+  totalMs: number;
+};
+
 export type CardMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  timing?: MessageTiming;
 };
 
 export type PassageCard = {

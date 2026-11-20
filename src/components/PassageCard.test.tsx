@@ -74,6 +74,26 @@ describe("PassageCard", () => {
     expect(screen.getByText("正在生成…")).toBeInTheDocument();
   });
 
+  it("shows how long each answer took", () => {
+    const card = buildCard({
+      messages: [
+        { id: "m1", role: "assistant", content: "译文", timing: { firstTokenMs: 2300, totalMs: 6100 } },
+      ],
+    });
+    render(
+      <PassageCard
+        card={card}
+        questionActionLabel="Ask ZhiJiao"
+        onAsk={() => undefined}
+        onDismiss={() => undefined}
+        onToggle={() => undefined}
+        onRetry={() => undefined}
+        onNotice={() => undefined}
+      />,
+    );
+    expect(screen.getByText("首字 2.3 秒 · 完成 6.1 秒")).toBeInTheDocument();
+  });
+
   it("renders the full selected passage in the card header", () => {
     const selectionText =
       "This is a long selected paragraph that should stay fully visible in the right panel without being truncated.";

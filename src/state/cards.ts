@@ -1,4 +1,4 @@
-import type { CardMessage, CardMode, PassageCard } from "../types";
+import type { CardMessage, CardMode, MessageTiming, PassageCard } from "../types";
 
 type CardsAction =
   | { type: "add_card"; card: PassageCard }
@@ -6,7 +6,7 @@ type CardsAction =
   | { type: "toggle_card"; cardId: string }
   | { type: "start_request"; cardId: string; userMessage?: string; mode?: CardMode }
   | { type: "append_draft"; cardId: string; chunk: string }
-  | { type: "finish_request"; cardId: string; assistantMessage: string }
+  | { type: "finish_request"; cardId: string; assistantMessage: string; timing?: MessageTiming }
   | { type: "fail_request"; cardId: string; error: string };
 
 export function cardsReducer(state: PassageCard[], action: CardsAction): PassageCard[] {
@@ -55,7 +55,10 @@ export function cardsReducer(state: PassageCard[], action: CardsAction): Passage
               status: "done",
               draftOutput: "",
               error: null,
-              messages: [...card.messages, createMessage("assistant", action.assistantMessage)],
+              messages: [
+                ...card.messages,
+                createMessage("assistant", action.assistantMessage, action.timing),
+              ],
             }
           : card,
       );
@@ -109,10 +112,42 @@ export function getCardHistory(card: PassageCard): Array<{ role: "user" | "assis
   }));
 }
 
-function createMessage(role: CardMessage["role"], content: string): CardMessage {
+function createMessage(
+  role: CardMessage["role"],
+  content: string,
+  timing?: MessageTiming,
+): CardMessage {
   return {
     id: crypto.randomUUID(),
     role,
     content,
+    ...(timing ? { timing } : {}),
   };
+}
+
+// Clock for one request: started when it is sent, first token = first chunk
+// off the network, total = the stream's end. Read in the stream handlers, not
+// after the typing cadence, so it measures the provider and the network.
+export function startRequestTimer(now: () => number = () => performance.now()) {
+  const startedAt = now();
+  let firstTokenAt: number | null = null;
+  return {
+    markChunk() {
+      if (firstTokenAt === null) {
+        firstTokenAt = now();
+      }
+    },
+    finish(): MessageTiming {
+      return {
+        firstTokenMs: firstTokenAt === null ? null : Math.round(firstTokenAt - startedAt),
+        totalMs: Math.round(now() - startedAt),
+      };
+    },
+  };
+}
+
+export function formatTiming(timing: MessageTiming): string {
+  const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} 秒`;
+  const total = `完成 ${seconds(timing.totalMs)}`;
+  return timing.firstTokenMs === null ? total : `首字 ${seconds(timing.firstTokenMs)} · ${total}`;
 }

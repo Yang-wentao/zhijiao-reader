@@ -280,6 +280,8 @@ describe("App selection flow", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Mouseup selection" }));
 
     await waitFor(() => expect(streamTranslation).toHaveBeenCalledTimes(1));
+    // The finished translation carries its timing line.
+    expect(await screen.findByText(/^首字 \d+\.\d 秒 · 完成 \d+\.\d 秒$/)).toBeInTheDocument();
   });
 
   it("right-clicking opens the highlight color menu without firing translation", async () => {

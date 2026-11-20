@@ -808,6 +808,13 @@ textarea {
   animation: stream-slide 1.25s ease-in-out infinite;
 }
 
+.message-timing {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: rgba(15, 23, 42, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
 .message-content {
   display: flex;
   flex-direction: column;
