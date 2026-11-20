@@ -341,9 +341,9 @@ describe("App selection flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
 
     await waitFor(() => expect(saveConnectionSettings).toHaveBeenCalledTimes(1));
-    // The header chip now shows "DeepSeek" + the shortened model name "v4-flash".
+    // The header chip now shows "DeepSeek" + the model's readable name.
     expect(screen.getByText("DeepSeek")).toBeInTheDocument();
-    expect(screen.getByText("v4-flash")).toBeInTheDocument();
+    expect(screen.getByText("V4.1 Flash")).toBeInTheDocument();
   });
 
   it("shows DeepSeek model as a fixed select with v4-flash and v4-pro options", async () => {
@@ -355,8 +355,8 @@ describe("App selection flow", () => {
     fireEvent.change(providerSelect, { target: { value: "deepseek" } });
 
     expect(await screen.findByRole("combobox", { name: "Model name" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "v4-flash（推荐 · 1M 上下文）" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "v4-pro（更强 · 当前 75% 折扣）" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "V4.1 Flash（推荐 · 1M 上下文）" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "V4 Pro（更强）" })).toBeInTheDocument();
     // A second dropdown lets the user toggle thinking mode independently.
     expect(screen.getByRole("combobox", { name: "DeepSeek thinking mode" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Model name" })).not.toBeInTheDocument();

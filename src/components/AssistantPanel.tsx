@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CloudBalance, PassageCard as PassageCardType, ProviderName } from "../types";
 import { PassageCard } from "./PassageCard";
+import { displayModelName } from "../lib/models";
 
 type AssistantPanelProps = {
   cards: PassageCardType[];
@@ -350,22 +351,9 @@ function formatProviderLabel(provider: ProviderName) {
   return "OpenAI";
 }
 
-// What the header chip shows next to the provider name: always the model.
-// For 知交订阅 the model is chosen server-side, so we prefer the name the
-// gateway reports and fall back to whatever /api/config says.
+// What the header chip shows next to the provider name: always the model,
+// by its readable name (lib/models.ts). For 知交订阅 the model is chosen
+// server-side, so we prefer the name the gateway reports.
 function chipValue(provider: ProviderName, model: string, balance: CloudBalance | null) {
-  return shortenModelName(provider, (provider === "cloud" && balance?.model) || model);
-}
-
-// Strip a redundant provider-name prefix from the model so the chip stays compact.
-// Example: "deepseek-v4-flash" → "v4-flash"; "glm-5" stays as-is.
-function shortenModelName(provider: ProviderName, model: string) {
-  if (!model) {
-    return model;
-  }
-  const lower = model.toLowerCase();
-  if ((provider === "deepseek" || provider === "cloud") && lower.startsWith("deepseek-")) {
-    return model.slice("deepseek-".length);
-  }
-  return model;
+  return displayModelName(provider, (provider === "cloud" && balance?.model) || model);
 }

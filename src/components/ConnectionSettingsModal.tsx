@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { IS_WEB_BUILD } from "../lib/appMode";
+import { DEEPSEEK_MODEL_OPTIONS, SJTU_MODEL_OPTIONS } from "../lib/models";
 import { formatExpiry, webFetchPublicCode, type PublicTrialCode } from "../lib/webApi";
 import xhsQr from "../assets/xhs-qr.jpg";
 import type { ConnectionSettings } from "../types";
@@ -55,20 +56,9 @@ const WEB_PROVIDER_GROUPS = [
 ] as const;
 
 const CODEX_MODEL_OPTIONS = ["gpt-5.4-mini", "gpt-5.4", "gpt-5.3-codex-spark"] as const;
-const DEEPSEEK_MODEL_OPTIONS = [
-  { value: "deepseek-v4-flash", label: "v4-flash（推荐 · 1M 上下文）" },
-  { value: "deepseek-v4-pro", label: "v4-pro（更强 · 当前 75% 折扣）" },
-] as const;
 const DEEPSEEK_THINKING_OPTIONS = [
   { value: "disabled", label: "非思考（更快）" },
   { value: "enabled", label: "深度思考（更细）" },
-] as const;
-const SJTU_MODEL_OPTIONS = [
-  { value: "deepseek-chat", label: "deepseek-chat（推荐）" },
-  { value: "deepseek-reasoner", label: "deepseek-reasoner" },
-  { value: "glm-5", label: "glm-5" },
-  { value: "minimax-m2.5", label: "minimax-m2.5" },
-  { value: "qwen3coder", label: "qwen3coder" },
 ] as const;
 const OPENAI_MODEL_OPTIONS = [
   { value: "gpt-5.5", label: "gpt-5.5（最强）" },
