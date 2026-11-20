@@ -67,6 +67,13 @@ describe("buildChatBody", () => {
     expect(sjtu).not.toHaveProperty("temperature");
     expect(sjtu).not.toHaveProperty("thinking");
   });
+
+  it("turns Qwen's silent thinking off on the SJTU API", () => {
+    expect(buildChatBody({ ...SJTU, model: "qwen3.8-27b" }, messages, 0.3, true)).toMatchObject({
+      chat_template_kwargs: { enable_thinking: false },
+    });
+    expect(buildChatBody(SJTU, messages, 0.3, true)).not.toHaveProperty("chat_template_kwargs");
+  });
 });
 
 describe("streamChatCompletion", () => {

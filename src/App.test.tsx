@@ -384,10 +384,10 @@ describe("App selection flow", () => {
 
     fireEvent.change(providerSelect, { target: { value: "sjtu" } });
     expect(await screen.findByDisplayValue("https://models.sjtu.edu.cn/api/v1")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "deepseek-chat（推荐）" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "deepseek-reasoner" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "glm-5" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "minimax" })).not.toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "minimax-m2.5" })).toBeInTheDocument();
+    // The models the SJTU API actually serves (checked against its /models).
+    expect(screen.getByRole("option", { name: "V4 Flash（推荐）" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "V4 Flash · 深度思考（较慢）" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Qwen3.8（27B）" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "glm-5" })).not.toBeInTheDocument();
   });
 });

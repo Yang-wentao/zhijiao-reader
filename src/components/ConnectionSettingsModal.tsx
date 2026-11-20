@@ -402,6 +402,11 @@ export function ConnectionSettingsModal({
                 });
               }}
             >
+              {/* A model saved before the list changed (e.g. glm-5) stays
+                  visible instead of the dropdown going blank. */}
+              {!SJTU_MODEL_OPTIONS.some((option) => option.value === target.model) ? (
+                <option value={target.model}>{target.model}（已不在交大列表中）</option>
+              ) : null}
               {SJTU_MODEL_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}

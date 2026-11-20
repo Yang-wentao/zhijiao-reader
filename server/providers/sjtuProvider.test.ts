@@ -58,5 +58,20 @@ describe("SjtuProvider", () => {
         stream: true,
       }),
     );
+    expect(createMock.mock.calls[0][0]).not.toHaveProperty("chat_template_kwargs");
+  });
+
+  it("switches Qwen's silent thinking off", async () => {
+    createMock.mockResolvedValue({ async *[Symbol.asyncIterator]() {} });
+    const { SjtuProvider } = await import("./sjtuProvider.js");
+    const provider = new SjtuProvider({
+      apiKey: "test-key",
+      model: "qwen3.8-27b",
+      baseURL: "https://models.sjtu.edu.cn/api/v1",
+    });
+    await provider.streamTranslation({ selectionText: "Passage", pageNumber: 1 });
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ chat_template_kwargs: { enable_thinking: false } }),
+    );
   });
 });

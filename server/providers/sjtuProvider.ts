@@ -37,7 +37,10 @@ export class SjtuProvider implements AIProvider {
   }
 
   private async streamMessages(messages: ChatMessage[], temperature: number): Promise<AsyncIterable<string>> {
-    const stream = await this.client.chat.completions.create({
+    // Qwen3 on the SJTU API thinks silently unless told not to — ~30s of
+    // nothing before the first word, versus ~6s with thinking off. Same
+    // switch as the web build (src/lib/models.ts disablesQwenThinking).
+    const params = {
       model: this.model,
       temperature: this.model === "deepseek-reasoner" ? undefined : temperature,
       stream: true,
@@ -45,7 +48,13 @@ export class SjtuProvider implements AIProvider {
         role: message.role === "developer" ? "system" : message.role,
         content: message.content,
       })),
-    });
+      ...(this.model.toLowerCase().startsWith("qwen")
+        ? { chat_template_kwargs: { enable_thinking: false } }
+        : {}),
+    };
+    const stream = await this.client.chat.completions.create(
+      params as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
+    );
 
     return this.extractTextStream(stream);
   }

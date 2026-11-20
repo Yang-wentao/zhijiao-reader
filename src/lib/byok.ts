@@ -6,6 +6,7 @@
 // imported, not copied, so this adds no fourth prompt copy to keep in sync.
 import { buildAskMessages, buildTranslationMessages } from "../../server/prompts";
 import type { ChatMessage } from "../../server/providers/types";
+import { disablesQwenThinking } from "./models";
 import type { ConnectionTestResult } from "../types";
 
 export type ByokProvider = "deepseek" | "sjtu";
@@ -59,6 +60,9 @@ export function buildChatBody(
   }
   if (target.provider === "deepseek") {
     body.thinking = { type: thinking ? "enabled" : "disabled" };
+  }
+  if (target.provider === "sjtu" && disablesQwenThinking(target.model)) {
+    body.chat_template_kwargs = { enable_thinking: false };
   }
   return body;
 }

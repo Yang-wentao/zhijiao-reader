@@ -328,13 +328,11 @@ function createProviderRuntimeMap(settings: ConnectionSettings): Record<Provider
         : createUnavailableProvider("SJTU API 连接信息不完整，请在设置中填写。"),
       isReady: sjtuReady,
       model: settings.sjtu.model,
+      // Keep in step with SJTU_MODEL_OPTIONS in src/lib/models.ts.
       modelOptions: withSavedModel(settings.sjtu.model, [
         "deepseek-chat",
         "deepseek-reasoner",
-        "glm-5",
-        "minimax",
-        "minimax-m2.5",
-        "qwen3coder",
+        "qwen3.8-27b",
       ]),
       canSwitchModels: true,
       reasoningEffort: null,
